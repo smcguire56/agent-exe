@@ -199,6 +199,7 @@ interface GameStore extends GameState {
   restart: () => void;
   hireCandidate: (candidateId: string) => void;
   refreshCandidates: () => void;
+  inspectProduct: (productId: string, type: "quick" | "deep") => void;
   devSet: (patch: Partial<GameState>) => void;
 }
 
@@ -597,6 +598,46 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       hireCandidates: generateCandidates(usedNames),
       hireCandidatesDay: state.time.day,
+    });
+  },
+
+  inspectProduct: (productId, type) => {
+    const state = get();
+    const product = state.products.find((p) => p.id === productId);
+    if (!product || product.inspected || product.inspectTicks !== null || product.listed) return;
+
+    const cost = type === "quick" ? 5 : 20;
+    const ticks = type === "quick" ? 1 : 3;
+
+    if (state.money < cost) {
+      set({
+        events: appendEvents(state.events, [
+          {
+            timestamp: { ...state.time },
+            level: "warning",
+            icon: "💸",
+            message: `Inspection costs $${cost}. You have $${state.money}.`,
+          },
+        ]),
+      });
+      return;
+    }
+
+    set({
+      money: state.money - cost,
+      products: state.products.map((p) =>
+        p.id === productId
+          ? { ...p, inspectTicks: ticks, inspectType: type }
+          : p,
+      ),
+      events: appendEvents(state.events, [
+        {
+          timestamp: { ...state.time },
+          level: "info",
+          icon: type === "quick" ? "🔎" : "🔍",
+          message: `${type === "quick" ? "Quick" : "Deep"} inspection started on "${product.name}" ($${cost}).`,
+        },
+      ]),
     });
   },
 

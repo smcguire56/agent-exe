@@ -1,29 +1,75 @@
 import { useGameStore } from "../../store/gameStore";
 import type { Product } from "../../types";
 
+function QualityBadge({ product }: { product: Product }) {
+  if (!product.inspected) {
+    return <span className="text-shell-dim">???</span>;
+  }
+  const colors: Record<string, string> = {
+    bad: "text-shell-danger",
+    ok: "text-shell-dim",
+    good: "text-shell-good",
+    excellent: "text-shell-cyan",
+  };
+  return (
+    <span className={colors[product.quality] ?? "text-shell-dim"}>
+      {product.quality.toUpperCase()}
+    </span>
+  );
+}
+
 function InventoryRow({ product }: { product: Product }) {
   const listProduct = useGameStore((s) => s.listProduct);
+  const inspectProduct = useGameStore((s) => s.inspectProduct);
+  const isInspecting = product.inspectTicks !== null && product.inspectTicks > 0;
+
   return (
     <div className="shell-panel-inset p-2 mb-2 font-mono text-xs">
       <div className="flex justify-between items-start gap-2">
         <div className="min-w-0">
           <div className="text-shell-text truncate">📦 {product.name}</div>
           <div className="text-shell-dim">
-            bought $ {product.buyPrice} · risk {product.risk}
+            bought ${product.buyPrice} · risk {product.risk} · quality:{" "}
+            <QualityBadge product={product} />
           </div>
-          {product.hiddenTrait && (
+          {product.inspected && product.hiddenTrait && (
             <div className="text-shell-warn italic mt-0.5 truncate">
               ~ {product.hiddenTrait}
             </div>
           )}
+          {isInspecting && (
+            <div className="text-shell-cyan mt-0.5">
+              🔍 inspecting... {product.inspectTicks}t remaining
+            </div>
+          )}
         </div>
-        <button
-          onClick={() => listProduct(product.id)}
-          className="shell-button !text-shell-good shrink-0"
-          data-testid={`list-product-${product.id}`}
-        >
-          ▶ LIST ${product.sellPrice}
-        </button>
+        <div className="shrink-0 flex flex-col gap-1">
+          {!product.inspected && !isInspecting && (
+            <>
+              <button
+                onClick={() => inspectProduct(product.id, "quick")}
+                className="shell-button !text-shell-cyan text-[10px]"
+              >
+                🔎 QUICK $5
+              </button>
+              <button
+                onClick={() => inspectProduct(product.id, "deep")}
+                className="shell-button !text-shell-cyan text-[10px]"
+              >
+                🔍 DEEP $20
+              </button>
+            </>
+          )}
+          {!isInspecting && (
+            <button
+              onClick={() => listProduct(product.id)}
+              className="shell-button !text-shell-good"
+              data-testid={`list-product-${product.id}`}
+            >
+              {product.inspected ? "▶ LIST" : "▶ SELL BLIND"} ${product.sellPrice}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -36,7 +82,7 @@ function ListingRow({ product }: { product: Product }) {
         <div className="min-w-0">
           <div className="text-shell-text truncate">🏷️ {product.name}</div>
           <div className="text-shell-cyan">
-            listed @ ${product.sellPrice}
+            listed @ ${product.sellPrice} · <QualityBadge product={product} />
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -106,7 +152,7 @@ export function Market() {
           💰 ${money} · {inventory.length} unlisted · {listings.length}{" "}
           listed
         </span>
-        <span>MARKET.EXE v0.1</span>
+        <span>MARKET.EXE v0.2</span>
       </div>
     </>
   );

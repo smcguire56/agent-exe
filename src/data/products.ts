@@ -13,6 +13,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "USB Cable (Probably Works)",
@@ -26,6 +28,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Scented Candle — 'Ocean Breeze' (Debatable)",
@@ -39,6 +43,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Self-Help Book: 'Hustle Harder, Cry Later'",
@@ -52,6 +58,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Mug That Says 'World's Okayest Boss'",
@@ -65,6 +73,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Desk Fan (One Speed: Chaos)",
@@ -78,6 +88,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Wireless Mouse (Sometimes Wireless, Sometimes Not)",
@@ -91,6 +103,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Novelty Socks (Pattern: Suspicious)",
@@ -104,6 +118,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Phone Stand (Architectural Integrity: Low)",
@@ -117,6 +133,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
   {
     name: "Motivational Poster: 'Believe In Your Shelf'",
@@ -130,6 +148,8 @@ export const TIER_1_PRODUCTS: Omit<Product, "id">[] = [
     hiddenTrait: null,
     listed: false,
     ticksToSell: null,
+    inspectTicks: null,
+    inspectType: null,
   },
 ];
 

@@ -59,9 +59,18 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
 
   if (success) {
     const template = randomFrom(TIER_1_PRODUCTS);
+    // Assign hidden quality — revealed on inspection
+    const qualityRoll = Math.random();
+    const hiddenQuality =
+      qualityRoll < 0.15 ? "bad" as const
+      : qualityRoll < 0.45 ? "ok" as const
+      : qualityRoll < 0.80 ? "good" as const
+      : "excellent" as const;
+
     const product: Product = {
       ...template,
       id: makeId("prod"),
+      quality: hiddenQuality,
       // 25% chance the item has a hidden trait we'll surface later
       hiddenTrait:
         Math.random() < 0.25 ? randomFrom(HIDDEN_TRAITS) : null,

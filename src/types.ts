@@ -50,6 +50,8 @@ export interface Product {
   hiddenTrait: string | null;
   listed: boolean;
   ticksToSell: number | null;
+  inspectTicks: number | null;
+  inspectType: "quick" | "deep" | null;
 }
 
 export interface InventoryItem {
