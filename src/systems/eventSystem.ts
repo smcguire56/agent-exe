@@ -15,7 +15,7 @@ export const HIGH_HEAT_THRESHOLD = 80;
 export const HIGH_HEAT_WARNING_CHANCE = 0.25;
 
 // How much heat passively burns off every tick.
-export const HEAT_DECAY_PER_TICK = 1;
+export const HEAT_DECAY_PER_TICK = 0.3;
 
 // Anything at or above this ends the run.
 export const HEAT_GAME_OVER = 100;
