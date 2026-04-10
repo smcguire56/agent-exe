@@ -8,8 +8,9 @@ const APPS: { id: string; label: string; icon: string }[] = [
 ];
 
 export function Taskbar() {
-  const activeApp = useGameStore((s) => s.activeApp);
-  const setActiveApp = useGameStore((s) => s.setActiveApp);
+  const openWindows = useGameStore((s) => s.openWindows);
+  const toggleWindow = useGameStore((s) => s.toggleWindow);
+  const focusWindow = useGameStore((s) => s.focusWindow);
 
   return (
     <div className="shell-panel flex items-center px-2 py-1 gap-2 border-t-2">
@@ -19,13 +20,22 @@ export function Taskbar() {
       </div>
       <div className="h-6 w-px bg-shell-border" />
       {APPS.map((app) => {
-        const active = activeApp === app.id;
+        const isOpen = openWindows.includes(app.id);
         return (
           <button
             key={app.id}
-            onClick={() => setActiveApp(active ? null : app.id)}
+            onClick={() => {
+              if (isOpen) {
+                focusWindow(app.id);
+              } else {
+                toggleWindow(app.id);
+              }
+            }}
+            onDoubleClick={() => {
+              if (isOpen) toggleWindow(app.id);
+            }}
             className={`shell-button flex items-center gap-2 ${
-              active ? "!bg-shell-border !text-shell-cyan" : ""
+              isOpen ? "!bg-shell-border !text-shell-cyan" : ""
             }`}
           >
             <span>{app.icon}</span>

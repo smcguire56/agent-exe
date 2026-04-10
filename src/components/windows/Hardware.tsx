@@ -53,23 +53,12 @@ export function Hardware() {
   const money = useGameStore((s) => s.money);
   const agents = useGameStore((s) => s.agents);
   const upgradeCpu = useGameStore((s) => s.upgradeCpu);
-  const close = () => useGameStore.getState().setActiveApp(null);
 
   const cap = maxAgents(hw);
 
   return (
-    <div className="shell-panel absolute inset-4 flex flex-col z-10">
-      <div className="shell-title flex items-center justify-between">
-        <span>🖥️ HARDWARE.SHOP — Upgrades</span>
-        <button
-          onClick={close}
-          className="shell-button !py-0 !px-2 !text-shell-danger"
-        >
-          X
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto log-scroll bg-shell-bg p-4 font-mono text-sm">
+    <>
+      <div className="flex-1 overflow-y-auto log-scroll p-4 font-mono text-sm">
         <div className="text-shell-cyan uppercase text-xs mb-2 border-b border-shell-border pb-1">
           Available Upgrades
         </div>
@@ -117,6 +106,6 @@ export function Hardware() {
         <span>💰 ${money}</span>
         <span>HARDWARE.SHOP v0.1</span>
       </div>
-    </div>
+    </>
   );
 }

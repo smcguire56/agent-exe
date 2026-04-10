@@ -104,6 +104,8 @@ export interface GameState {
   events: EventLog[];
   upgrades: Record<string, boolean>;
   activeApp: string | null;
+  openWindows: string[];
+  windowZOrder: string[];
   gameOver: boolean;
   gameOverReason: string | null;
   stats: GameStats;

@@ -53,24 +53,13 @@ function ListingRow({ product }: { product: Product }) {
 export function Market() {
   const products = useGameStore((s) => s.products);
   const money = useGameStore((s) => s.money);
-  const close = () => useGameStore.getState().setActiveApp(null);
 
   const inventory = products.filter((p) => !p.listed);
   const listings = products.filter((p) => p.listed);
 
   return (
-    <div className="shell-panel absolute inset-4 flex flex-col z-10">
-      <div className="shell-title flex items-center justify-between">
-        <span>🛒 MARKET.EXE — Source &amp; List</span>
-        <button
-          onClick={close}
-          className="shell-button !py-0 !px-2 !text-shell-danger"
-        >
-          X
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-hidden bg-shell-bg flex">
+    <>
+      <div className="flex-1 overflow-hidden flex">
         {/* Inventory */}
         <div className="flex-1 border-r-2 border-shell-border flex flex-col overflow-hidden">
           <div className="px-3 py-1 font-mono text-xs uppercase text-shell-cyan border-b border-shell-border bg-shell-panel2 flex justify-between">
@@ -119,6 +108,6 @@ export function Market() {
         </span>
         <span>MARKET.EXE v0.1</span>
       </div>
-    </div>
+    </>
   );
 }

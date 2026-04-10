@@ -153,6 +153,9 @@ const seedEvents = (): EventLog[] => {
 interface GameStore extends GameState {
   paused: boolean;
   setActiveApp: (app: string | null) => void;
+  toggleWindow: (appId: string) => void;
+  closeWindow: (appId: string) => void;
+  focusWindow: (appId: string) => void;
   pushEvent: (e: Omit<EventLog, "id" | "timestamp">) => void;
   tick: () => void;
   assignTask: (agentId: string) => void;
@@ -188,12 +191,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
   events: seedEvents(),
   upgrades: {},
   activeApp: null,
+  openWindows: [],
+  windowZOrder: [],
   paused: false,
   gameOver: false,
   gameOverReason: null,
   stats: { ...initialStats },
 
   setActiveApp: (app) => set({ activeApp: app }),
+  toggleWindow: (appId) => {
+    const { openWindows, windowZOrder } = get();
+    if (openWindows.includes(appId)) {
+      set({
+        openWindows: openWindows.filter((w) => w !== appId),
+        windowZOrder: windowZOrder.filter((w) => w !== appId),
+      });
+    } else {
+      set({
+        openWindows: [...openWindows, appId],
+        windowZOrder: [...windowZOrder.filter((w) => w !== appId), appId],
+      });
+    }
+  },
+  closeWindow: (appId) => {
+    const { openWindows, windowZOrder } = get();
+    set({
+      openWindows: openWindows.filter((w) => w !== appId),
+      windowZOrder: windowZOrder.filter((w) => w !== appId),
+    });
+  },
+  focusWindow: (appId) => {
+    const { windowZOrder } = get();
+    set({ windowZOrder: [...windowZOrder.filter((w) => w !== appId), appId] });
+  },
   setPaused: (paused) => set({ paused }),
 
   pushEvent: (e) =>
@@ -312,6 +342,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       events: seedEvents(),
       upgrades: {},
       activeApp: null,
+      openWindows: [],
+      windowZOrder: [],
       gameOver: false,
       gameOverReason: null,
       stats: { ...initialStats },
