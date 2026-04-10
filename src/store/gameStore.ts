@@ -10,7 +10,6 @@ import type {
   Task,
 } from "../types";
 import {
-  STARTUP_MESSAGES,
   SOURCING_START_MESSAGES,
 } from "../data/messages";
 import { TIER_1_NAMES, TIER_2_NAMES } from "../data/agentNames";
@@ -122,110 +121,39 @@ const initialStats: GameStats = {
   daysSurvived: 1,
 };
 
-const buildPlaceholderAgents = (): Agent[] => [
-  {
-    id: "agent_bryan",
+function makeBryanCandidate(): Agent {
+  return {
+    id: "candidate_bryan_fixed",
     name: "Bryan",
     tier: 1,
     status: "idle",
     speed: 3,
     accuracy: 0.7,
     riskTolerance: 0.3,
-    cost: 100,
+    cost: HIRE_COST,
     wage: 5,
-    traits: ["Perfectionist", "Loyal"],
-    bio: "Bryan (Perfectionist, Loyal): Will triple-check everything. Will also cry if you yell at him.",
+    traits: ["Loyal", "Perfectionist"],
+    bio: "Will triple-check everything. Enthusiastic to a degree that raises questions.",
     currentTask: null,
-    mood: "tired but optimistic",
-    settings: {
-      prioritizeProfit: false,
-      safetyMode: true,
-      autoFixErrors: false,
-    },
-  },
-  {
-    id: "agent_pam",
-    name: "Pam",
-    tier: 1,
-    status: "working",
-    speed: 4,
-    accuracy: 0.65,
-    riskTolerance: 0.5,
-    cost: 100,
-    wage: 5,
-    traits: ["Competitive", "Creative"],
-    bio: "Pam (Competitive, Creative): Outperforms everyone. Wrote product descriptions in haiku once.",
-    currentTask: {
-      id: "task_pam_1",
-      kind: "source",
-      label: "Sourcing knockoff sunglasses",
-      ticksRemaining: 6,
-    },
-    mood: "caffeinated",
-    settings: {
-      prioritizeProfit: true,
-      safetyMode: false,
-      autoFixErrors: false,
-    },
-  },
-];
+    mood: "ready",
+    settings: { prioritizeProfit: false, safetyMode: true, autoFixErrors: false },
+  };
+}
 
 const seedEvents = (): EventLog[] => {
   const t = { day: 1, hour: 9, minute: 0 };
+  const e = (level: EventLog["level"], icon: string, message: string): EventLog => ({
+    id: nextEventId(), timestamp: t, level, icon, message,
+  });
   return [
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "system",
-      icon: "💾",
-      message: STARTUP_MESSAGES[0],
-    },
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "system",
-      icon: "🧠",
-      message: STARTUP_MESSAGES[1],
-    },
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "info",
-      icon: "🛰️",
-      message: STARTUP_MESSAGES[2],
-    },
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "good",
-      icon: "✨",
-      message: STARTUP_MESSAGES[3],
-    },
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "agent",
-      source: "Bryan",
-      icon: "🤖",
-      message: "Booted up. Asking what we're doing today. Several times.",
-    },
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "agent",
-      source: "Pam",
-      icon: "🤖",
-      message:
-        "Started sourcing knockoff sunglasses. Says they 'looked legit on the website.'",
-    },
-    {
-      id: nextEventId(),
-      timestamp: t,
-      level: "warning",
-      icon: "⚠️",
-      message:
-        "WARNING: A subreddit has noticed your store. Heat is technically zero. For now.",
-    },
+    e("system",  "💾", "SHELLOS OS v1.0 ── KERNEL BOOT SEQUENCE INITIATED"),
+    e("system",  "⚙️", "[INIT] Loading marketplace interfaces ............... OK"),
+    e("system",  "⚙️", "[INIT] Mounting product filesystem .................. OK"),
+    e("system",  "⚙️", "[INIT] Bootstrapping agent runtime .................. OK"),
+    e("system",  "⚙️", "[INIT] Checking registered agents ................... NONE"),
+    e("warning", "⚠️", "[WARN] Agent roster empty. All operations suspended."),
+    e("system",  "📋", "[INFO] 1 candidate found in applicant pool: BRYAN"),
+    e("info",    "→",  "Hire an agent to begin. Open AgentHQ or use the Agents panel."),
   ];
 };
 
@@ -272,11 +200,11 @@ function appendEvents(
 export const useGameStore = create<GameStore>((set, get) => ({
   money: 500,
   time: { day: 1, hour: 9, minute: 0 },
-  agents: buildPlaceholderAgents(),
+  agents: [],
   products: [],
   inventory: [],
   hardware: { cpu: 2, ram: 1, cooling: 1, storage: 1 },
-  heat: 12,
+  heat: 0,
   events: seedEvents(),
   upgrades: {},
   activeApp: null,
@@ -286,7 +214,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameOver: false,
   gameOverReason: null,
   stats: { ...initialStats },
-  hireCandidates: generateCandidates(new Set(["Bryan", "Pam"]), false),
+  hireCandidates: [makeBryanCandidate(), ...generateCandidates(new Set(["Bryan"]), false)],
   hireCandidatesDay: 1,
   mails: [],
   lastSaveDay: 1,
@@ -581,11 +509,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       money: 500,
       time: { day: 1, hour: 9, minute: 0 },
-      agents: buildPlaceholderAgents(),
+      agents: [],
       products: [],
       inventory: [],
       hardware: { cpu: 2, ram: 1, cooling: 1, storage: 1 },
-      heat: 12,
+      heat: 0,
       events: seedEvents(),
       upgrades: {},
       activeApp: null,
@@ -594,7 +522,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameOver: false,
       gameOverReason: null,
       stats: { ...initialStats },
-      hireCandidates: generateCandidates(new Set(["Bryan", "Pam"]), false),
+      hireCandidates: [makeBryanCandidate(), ...generateCandidates(new Set(["Bryan"]), false)],
       hireCandidatesDay: 1,
       mails: [],
       lastSaveDay: 1,
@@ -813,19 +741,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     const hired: Agent = { ...candidate, id: makeId("agent"), status: "idle", currentTask: null };
+    const isFirstHire = state.agents.length === 0;
+    const t = { ...state.time };
+
+    const hireEvents: Omit<EventLog, "id">[] = [
+      { timestamp: t, level: "good", icon: "🤝", message: `Hired ${hired.name}. ${hired.bio}` },
+    ];
+
+    if (isFirstHire) {
+      hireEvents.push(
+        { timestamp: t, level: "system", icon: "⚙️", message: `AGENT BOOT — "${hired.name}" v1.0 — initializing...` },
+        { timestamp: t, level: "system", icon: "⚙️", message: `> Personality matrix loaded: caffeinated, optimistic` },
+        { timestamp: t, level: "system", icon: "⚙️", message: `> Work ethic: present. Ambition: suspiciously high.` },
+        { timestamp: t, level: "system", icon: "✅", message: `BOOT COMPLETE. Agent "${hired.name}" online.` },
+        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `OH. OH WOW. You actually hired me. Okay. OKAY. I have a plan.` },
+        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 1 — Click ▶ TASK next to my name. I'll go find something we can sell.` },
+        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 2 — When I bring back a product, open the Market window and LIST it. That's where the money comes from.` },
+        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 3 — Keep the HEAT low. Complaints push heat up. Heat hits 100 and we're done. So don't be weird about it.` },
+        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `I am going to make you SO much money. The number will be real. Probably. Let's find out.` },
+        { timestamp: t, level: "info", icon: "→", message: `${hired.name} is ready and waiting. He can tell you're still reading this.` },
+      );
+    }
+
     set({
       money: state.money - candidate.cost,
       agents: [...state.agents, hired],
       hireCandidates: state.hireCandidates.filter((c) => c.id !== candidateId),
       stats: { ...state.stats, agentsHired: state.stats.agentsHired + 1 },
-      events: appendEvents(state.events, [
-        {
-          timestamp: { ...state.time },
-          level: "good",
-          icon: "🤝",
-          message: `Hired ${hired.name}. ${hired.bio}`,
-        },
-      ]),
+      events: appendEvents(state.events, hireEvents),
     });
   },
 
