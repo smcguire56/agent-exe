@@ -137,14 +137,12 @@ export function randomMail(category: MailCategory): MailTemplate {
   return randomFrom(ALL_POOLS[category]);
 }
 
-/** Pick a random mail category with weighted probabilities. */
+/** Pick a random mail category (only ambient types — sales/complaints are contextual). */
 export function randomMailCategory(): MailCategory {
   const roll = Math.random();
-  if (roll < 0.25) return "spam";
-  if (roll < 0.45) return "system";
-  if (roll < 0.60) return "agent";
-  if (roll < 0.80) return "sales";
-  return "complaint";
+  if (roll < 0.45) return "spam";
+  if (roll < 0.75) return "system";
+  return "agent";
 }
 
 /** Generate a contextual sale mail based on product quality and inspection status. */
