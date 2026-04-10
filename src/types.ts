@@ -24,6 +24,7 @@ export interface Agent {
   cost: number;
   wage: number;
   traits: string[];
+  bio: string;
   currentTask: Task | null;
   mood: string;
   settings: AgentSettings;
@@ -109,4 +110,6 @@ export interface GameState {
   gameOver: boolean;
   gameOverReason: string | null;
   stats: GameStats;
+  hireCandidates: Agent[];
+  hireCandidatesDay: number;
 }

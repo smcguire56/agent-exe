@@ -13,6 +13,7 @@ import {
   SOURCING_START_MESSAGES,
 } from "../data/messages";
 import { TIER_1_NAMES } from "../data/agentNames";
+import { pickTraits, generateBio, randomMood } from "../data/traits";
 import { advanceTime, randomFrom, makeId } from "../systems/gameTick";
 import { processAgent } from "../systems/agentSystem";
 import { processProduct } from "../systems/productSystem";
@@ -35,8 +36,38 @@ export function maxAgents(hardware: Hardware): number {
   return hardware.cpu;
 }
 
+const HIRE_REFRESH_DAYS = 10;
+const HIRE_CANDIDATE_COUNT = 3;
+
 let eventCounter = 0;
 const nextEventId = () => `evt_${Date.now()}_${eventCounter++}`;
+
+function generateCandidates(usedNames: Set<string>): Agent[] {
+  const available = TIER_1_NAMES.filter((n) => !usedNames.has(n));
+  const candidates: Agent[] = [];
+  for (let i = 0; i < HIRE_CANDIDATE_COUNT && available.length > 0; i++) {
+    const idx = Math.floor(Math.random() * available.length);
+    const name = available.splice(idx, 1)[0];
+    const traits = pickTraits(2);
+    candidates.push({
+      id: makeId("candidate"),
+      name,
+      tier: 1,
+      status: "idle",
+      speed: 2 + Math.floor(Math.random() * 4),
+      accuracy: +(0.5 + Math.random() * 0.3).toFixed(2),
+      riskTolerance: +Math.random().toFixed(2),
+      cost: HIRE_COST,
+      wage: 5,
+      traits: traits as string[],
+      bio: generateBio(name, traits),
+      currentTask: null,
+      mood: randomMood(),
+      settings: { prioritizeProfit: false, safetyMode: true, autoFixErrors: false },
+    });
+  }
+  return candidates;
+}
 
 const initialStats: GameStats = {
   itemsSold: 0,
@@ -56,7 +87,8 @@ const buildPlaceholderAgents = (): Agent[] => [
     riskTolerance: 0.3,
     cost: 100,
     wage: 5,
-    traits: ["forgetful", "earnest"],
+    traits: ["Perfectionist", "Loyal"],
+    bio: "Bryan (Perfectionist, Loyal): Will triple-check everything. Will also cry if you yell at him.",
     currentTask: null,
     mood: "tired but optimistic",
     settings: {
@@ -75,7 +107,8 @@ const buildPlaceholderAgents = (): Agent[] => [
     riskTolerance: 0.5,
     cost: 100,
     wage: 5,
-    traits: ["chatty"],
+    traits: ["Competitive", "Creative"],
+    bio: "Pam (Competitive, Creative): Outperforms everyone. Wrote product descriptions in haiku once.",
     currentTask: {
       id: "task_pam_1",
       kind: "source",
@@ -164,6 +197,8 @@ interface GameStore extends GameState {
   upgradeCpu: () => void;
   setPaused: (paused: boolean) => void;
   restart: () => void;
+  hireCandidate: (candidateId: string) => void;
+  refreshCandidates: () => void;
   devSet: (patch: Partial<GameState>) => void;
 }
 
@@ -197,6 +232,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameOver: false,
   gameOverReason: null,
   stats: { ...initialStats },
+  hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
+  hireCandidatesDay: 1,
 
   setActiveApp: (app) => set({ activeApp: app }),
   toggleWindow: (appId) => {
@@ -315,6 +352,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
       daysSurvived: Math.max(state.stats.daysSurvived, newTime.day),
     };
 
+    // Refresh hire candidates every HIRE_REFRESH_DAYS
+    const shouldRefresh =
+      newTime.day !== state.time.day &&
+      newTime.day - state.hireCandidatesDay >= HIRE_REFRESH_DAYS;
+    const usedNames = new Set([...newAgents.map((a) => a.name)]);
+    const newCandidates = shouldRefresh
+      ? generateCandidates(usedNames)
+      : state.hireCandidates;
+    const newCandidatesDay = shouldRefresh ? newTime.day : state.hireCandidatesDay;
+
+    if (shouldRefresh) {
+      eventsBatch.push({
+        timestamp: { ...newTime },
+        level: "info",
+        icon: "📋",
+        message: "New applicants have arrived. Check AgentHQ.",
+      });
+    }
+
     set({
       time: newTime,
       agents: newAgents,
@@ -325,6 +381,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameOver,
       gameOverReason,
       stats: newStats,
+      hireCandidates: newCandidates,
+      hireCandidatesDay: newCandidatesDay,
     });
   },
 
@@ -347,6 +405,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameOver: false,
       gameOverReason: null,
       stats: { ...initialStats },
+      hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
+      hireCandidatesDay: 1,
     });
   },
 
@@ -456,6 +516,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       cost: HIRE_COST,
       wage: 5,
       traits: [],
+      bio: "",
       currentTask: null,
       mood: "ready to disappoint",
       settings: {
@@ -477,6 +538,65 @@ export const useGameStore = create<GameStore>((set, get) => ({
           message: `Hired ${name}. They arrived with a gym bag full of USB cables. No one asked.`,
         },
       ]),
+    });
+  },
+
+  hireCandidate: (candidateId) => {
+    const state = get();
+    const candidate = state.hireCandidates.find((c) => c.id === candidateId);
+    if (!candidate) return;
+
+    const cap = maxAgents(state.hardware);
+    if (state.agents.length >= cap) {
+      set({
+        events: appendEvents(state.events, [
+          {
+            timestamp: { ...state.time },
+            level: "warning",
+            icon: "🚫",
+            message: "No free CPU slots. Upgrade hardware first.",
+          },
+        ]),
+      });
+      return;
+    }
+    if (state.money < candidate.cost) {
+      set({
+        events: appendEvents(state.events, [
+          {
+            timestamp: { ...state.time },
+            level: "warning",
+            icon: "💸",
+            message: `Can't afford to hire ${candidate.name}. Need $${candidate.cost}.`,
+          },
+        ]),
+      });
+      return;
+    }
+
+    const hired: Agent = { ...candidate, id: makeId("agent"), status: "idle", currentTask: null };
+    set({
+      money: state.money - candidate.cost,
+      agents: [...state.agents, hired],
+      hireCandidates: state.hireCandidates.filter((c) => c.id !== candidateId),
+      stats: { ...state.stats, agentsHired: state.stats.agentsHired + 1 },
+      events: appendEvents(state.events, [
+        {
+          timestamp: { ...state.time },
+          level: "good",
+          icon: "🤝",
+          message: `Hired ${hired.name}. ${hired.bio}`,
+        },
+      ]),
+    });
+  },
+
+  refreshCandidates: () => {
+    const state = get();
+    const usedNames = new Set(state.agents.map((a) => a.name));
+    set({
+      hireCandidates: generateCandidates(usedNames),
+      hireCandidatesDay: state.time.day,
     });
   },
 
