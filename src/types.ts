@@ -127,4 +127,5 @@ export interface GameState {
   hireCandidates: Agent[];
   hireCandidatesDay: number;
   mails: Mail[];
+  tier2Unlocked: boolean;
 }

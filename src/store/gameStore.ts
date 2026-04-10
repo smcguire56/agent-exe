@@ -13,7 +13,7 @@ import {
   STARTUP_MESSAGES,
   SOURCING_START_MESSAGES,
 } from "../data/messages";
-import { TIER_1_NAMES } from "../data/agentNames";
+import { TIER_1_NAMES, TIER_2_NAMES } from "../data/agentNames";
 import { pickTraits, generateBio, randomMood } from "../data/traits";
 import { advanceTime, randomFrom, makeId } from "../systems/gameTick";
 import { effectiveTaskTicks, getModifiers, effectiveWage } from "../systems/traitEffects";
@@ -46,30 +46,72 @@ const HIRE_CANDIDATE_COUNT = 3;
 let eventCounter = 0;
 const nextEventId = () => `evt_${Date.now()}_${eventCounter++}`;
 
-function generateCandidates(usedNames: Set<string>): Agent[] {
-  const available = TIER_1_NAMES.filter((n) => !usedNames.has(n));
+export const TIER_2_UNLOCK_EARNED = 5000;
+const TIER_2_HIRE_COST_MIN = 500;
+const TIER_2_HIRE_COST_MAX = 2000;
+
+function makeTier1Candidate(name: string): Agent {
+  const traits = pickTraits(2);
+  return {
+    id: makeId("candidate"),
+    name,
+    tier: 1,
+    status: "idle",
+    speed: 2 + Math.floor(Math.random() * 4),
+    accuracy: +(0.5 + Math.random() * 0.3).toFixed(2),
+    riskTolerance: +Math.random().toFixed(2),
+    cost: HIRE_COST,
+    wage: 5,
+    traits: traits as string[],
+    bio: generateBio(name, traits),
+    currentTask: null,
+    mood: randomMood(),
+    settings: { prioritizeProfit: false, safetyMode: true, autoFixErrors: false },
+  };
+}
+
+function makeTier2Candidate(name: string): Agent {
+  const traits = pickTraits(2);
+  const cost = TIER_2_HIRE_COST_MIN + Math.floor(Math.random() * (TIER_2_HIRE_COST_MAX - TIER_2_HIRE_COST_MIN));
+  return {
+    id: makeId("candidate"),
+    name,
+    tier: 2,
+    status: "idle",
+    speed: 5 + Math.floor(Math.random() * 4),
+    accuracy: +(0.8 + Math.random() * 0.1).toFixed(2),
+    riskTolerance: +(0.4 + Math.random() * 0.4).toFixed(2),
+    cost,
+    wage: 15,
+    traits: traits as string[],
+    bio: generateBio(name, traits),
+    currentTask: null,
+    mood: randomMood(),
+    settings: { prioritizeProfit: true, safetyMode: false, autoFixErrors: false },
+  };
+}
+
+function generateCandidates(usedNames: Set<string>, tier2Unlocked = false): Agent[] {
+  const t1Available = TIER_1_NAMES.filter((n) => !usedNames.has(n));
   const candidates: Agent[] = [];
-  for (let i = 0; i < HIRE_CANDIDATE_COUNT && available.length > 0; i++) {
-    const idx = Math.floor(Math.random() * available.length);
-    const name = available.splice(idx, 1)[0];
-    const traits = pickTraits(2);
-    candidates.push({
-      id: makeId("candidate"),
-      name,
-      tier: 1,
-      status: "idle",
-      speed: 2 + Math.floor(Math.random() * 4),
-      accuracy: +(0.5 + Math.random() * 0.3).toFixed(2),
-      riskTolerance: +Math.random().toFixed(2),
-      cost: HIRE_COST,
-      wage: 5,
-      traits: traits as string[],
-      bio: generateBio(name, traits),
-      currentTask: null,
-      mood: randomMood(),
-      settings: { prioritizeProfit: false, safetyMode: true, autoFixErrors: false },
-    });
+
+  // Always generate Tier 1 candidates
+  const t1Count = tier2Unlocked ? 2 : HIRE_CANDIDATE_COUNT;
+  for (let i = 0; i < t1Count && t1Available.length > 0; i++) {
+    const idx = Math.floor(Math.random() * t1Available.length);
+    const name = t1Available.splice(idx, 1)[0];
+    candidates.push(makeTier1Candidate(name));
   }
+
+  // Add a Tier 2 candidate if unlocked
+  if (tier2Unlocked) {
+    const t2Available = TIER_2_NAMES.filter((n) => !usedNames.has(n));
+    if (t2Available.length > 0) {
+      const idx = Math.floor(Math.random() * t2Available.length);
+      candidates.push(makeTier2Candidate(t2Available[idx]));
+    }
+  }
+
   return candidates;
 }
 
@@ -243,10 +285,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameOver: false,
   gameOverReason: null,
   stats: { ...initialStats },
-  hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
+  hireCandidates: generateCandidates(new Set(["Bryan", "Pam"]), false),
   hireCandidatesDay: 1,
   mails: [],
   lastSaveDay: 1,
+  tier2Unlocked: false,
 
   setActiveApp: (app) => set({ activeApp: app }),
   toggleWindow: (appId) => {
@@ -295,11 +338,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const eventsBatch: Omit<EventLog, "id">[] = [];
 
     // 1. Process agents (may add new products)
+    let agentMoneyDelta = 0;
     for (const agent of state.agents) {
       const result = processAgent(agent, newTime);
       newAgents.push(result.agent);
       workingProducts.push(...result.productsToAdd);
       eventsBatch.push(...result.eventsToAdd);
+      agentMoneyDelta += result.moneyDelta;
     }
 
     // 2. Process products (listings tick down, may sell and disappear)
@@ -310,7 +355,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       teamComplaintMult *= mods.complaintMult;
     }
 
-    let moneyDelta = 0;
+    let moneyDelta = agentMoneyDelta;
     let heatDelta = 0;
     let itemsSoldThisTick = 0;
     let earnedThisTick = 0;
@@ -396,15 +441,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
       daysSurvived: Math.max(state.stats.daysSurvived, newTime.day),
     };
 
+    // 6b. Tier 2 unlock check
+    let newTier2 = state.tier2Unlocked;
+    if (!newTier2 && newStats.totalEarned >= TIER_2_UNLOCK_EARNED) {
+      newTier2 = true;
+      eventsBatch.push({
+        timestamp: { ...newTime },
+        level: "system",
+        icon: "🔓",
+        message: "SHELLOS: New agent class detected. Competency level: concerning. Access granted.",
+      });
+      eventsBatch.push({
+        timestamp: { ...newTime },
+        level: "good",
+        icon: "⚡",
+        message: "Tier 2 agents and grey-market products are now available. Check AgentHQ.",
+      });
+    }
+
     // Refresh hire candidates every HIRE_REFRESH_DAYS
     const shouldRefresh =
       newTime.day !== state.time.day &&
       newTime.day - state.hireCandidatesDay >= HIRE_REFRESH_DAYS;
+    // Also force refresh when tier 2 just unlocked
+    const forceRefresh = newTier2 && !state.tier2Unlocked;
     const usedNames = new Set([...newAgents.map((a) => a.name)]);
-    const newCandidates = shouldRefresh
-      ? generateCandidates(usedNames)
+    const newCandidates = (shouldRefresh || forceRefresh)
+      ? generateCandidates(usedNames, newTier2)
       : state.hireCandidates;
-    const newCandidatesDay = shouldRefresh ? newTime.day : state.hireCandidatesDay;
+    const newCandidatesDay = (shouldRefresh || forceRefresh) ? newTime.day : state.hireCandidatesDay;
 
     if (shouldRefresh) {
       eventsBatch.push({
@@ -470,6 +535,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hireCandidates: newCandidates,
       hireCandidatesDay: newCandidatesDay,
       mails: trimmedMails,
+      tier2Unlocked: newTier2,
     });
 
     if (autoSave && !gameOver) {
@@ -496,10 +562,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameOver: false,
       gameOverReason: null,
       stats: { ...initialStats },
-      hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
+      hireCandidates: generateCandidates(new Set(["Bryan", "Pam"]), false),
       hireCandidatesDay: 1,
       mails: [],
       lastSaveDay: 1,
+      tier2Unlocked: false,
     });
   },
 
@@ -699,7 +766,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const usedNames = new Set(state.agents.map((a) => a.name));
     set({
-      hireCandidates: generateCandidates(usedNames),
+      hireCandidates: generateCandidates(usedNames, state.tier2Unlocked),
       hireCandidatesDay: state.time.day,
     });
   },

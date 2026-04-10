@@ -1,9 +1,13 @@
 import type { Agent, EventLog, GameTime, Product } from "../types";
-import { TIER_1_PRODUCTS, HIDDEN_TRAITS } from "../data/products";
+import { TIER_1_PRODUCTS, TIER_2_PRODUCTS, HIDDEN_TRAITS } from "../data/products";
 import {
   SOURCING_FLAVOR_MESSAGES,
   SOURCING_SUCCESS_MESSAGES,
   ERROR_MESSAGES,
+  T2_SOURCING_FLAVOR_MESSAGES,
+  T2_SOURCING_SUCCESS_MESSAGES,
+  T2_ERROR_MESSAGES,
+  T2_INITIATIVE_MESSAGES,
 } from "../data/messages";
 import { makeId, randomFrom } from "./gameTick";
 import {
@@ -15,10 +19,14 @@ import {
 // Probability per in-progress tick that we emit a flavor chatter line
 const FLAVOR_CHANCE = 0.35;
 
+// Tier 2 initiative chance per completed task
+const T2_INITIATIVE_CHANCE = 0.15;
+
 export interface AgentTickResult {
   agent: Agent;
   productsToAdd: Product[];
   eventsToAdd: Omit<EventLog, "id">[];
+  moneyDelta: number;
 }
 
 function makeEvent(
@@ -33,12 +41,18 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
     agent,
     productsToAdd: [],
     eventsToAdd: [],
+    moneyDelta: 0,
   };
 
   const task = agent.currentTask;
   if (!task || agent.status !== "working") return result;
 
   const newTicksRemaining = task.ticksRemaining - 1;
+
+  // Pick message pools based on tier
+  const flavorPool = agent.tier >= 2 ? T2_SOURCING_FLAVOR_MESSAGES : SOURCING_FLAVOR_MESSAGES;
+  const successPool = agent.tier >= 2 ? T2_SOURCING_SUCCESS_MESSAGES : SOURCING_SUCCESS_MESSAGES;
+  const errorPool = agent.tier >= 2 ? T2_ERROR_MESSAGES : ERROR_MESSAGES;
 
   // Still working — chance to emit flavor chatter
   if (newTicksRemaining > 0) {
@@ -47,8 +61,8 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
         makeEvent(time, {
           level: "agent",
           source: agent.name,
-          icon: "🤖",
-          message: randomFrom(SOURCING_FLAVOR_MESSAGES),
+          icon: agent.tier >= 2 ? "🤖" : "🤖",
+          message: randomFrom(flavorPool),
         }),
       );
     }
@@ -67,7 +81,12 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
   const success = Math.random() < effectiveAccuracy(agent);
 
   if (success) {
-    const template = randomFrom(TIER_1_PRODUCTS);
+    // Tier 2 agents can source grey products (50/50 chance)
+    const productPool = agent.tier >= 2 && Math.random() < 0.5
+      ? TIER_2_PRODUCTS
+      : TIER_1_PRODUCTS;
+
+    const template = randomFrom(productPool);
     const qualityRoll = Math.random();
     const hiddenQuality =
       qualityRoll < 0.15 ? "bad" as const
@@ -87,7 +106,6 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
     const stealEvent = rollKleptoSteal(agent, time);
     if (stealEvent) {
       result.eventsToAdd.push(stealEvent);
-      // Product vanishes — don't add it to inventory
     } else {
       result.productsToAdd.push(product);
     }
@@ -97,16 +115,32 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
         level: "good",
         source: agent.name,
         icon: "📦",
-        message: `Sourced "${product.name}" for $${product.buyPrice}. ${randomFrom(SOURCING_SUCCESS_MESSAGES)}`,
+        message: `Sourced "${product.name}" for $${product.buyPrice}. ${randomFrom(successPool)}`,
       }),
     );
+
+    // Tier 2 "take initiative" — bonus action
+    if (agent.tier >= 2 && Math.random() < T2_INITIATIVE_CHANCE) {
+      const initiativeMsg = randomFrom(T2_INITIATIVE_MESSAGES);
+      // Initiative bonus: small money gain or extra product
+      const bonusCash = 10 + Math.floor(Math.random() * 40);
+      result.moneyDelta += bonusCash;
+      result.eventsToAdd.push(
+        makeEvent(time, {
+          level: "good",
+          source: agent.name,
+          icon: "💡",
+          message: `${agent.name} ${initiativeMsg} (+$${bonusCash})`,
+        }),
+      );
+    }
   } else {
     result.eventsToAdd.push(
       makeEvent(time, {
         level: "warning",
         source: agent.name,
         icon: "⚠️",
-        message: randomFrom(ERROR_MESSAGES),
+        message: randomFrom(errorPool),
       }),
     );
   }
@@ -115,7 +149,9 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
     ...agent,
     status: "idle",
     currentTask: null,
-    mood: success ? "smug" : "having a day",
+    mood: success
+      ? (agent.tier >= 2 ? "superior" : "smug")
+      : (agent.tier >= 2 ? "recalibrating" : "having a day"),
   };
   return result;
 }

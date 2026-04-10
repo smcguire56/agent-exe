@@ -122,9 +122,11 @@ export function processProduct(
   });
 
   // Complaint roll (Paranoid agents reduce complaints via complaintMult)
+  // Grey products (tier 2) generate 2x heat on complaints
+  const heatMult = product.tier >= 2 ? 2 : 1;
   const cc = complaintChance(product) * complaintMult;
   if (Math.random() < cc) {
-    result.heatDelta = COMPLAINT_HEAT;
+    result.heatDelta = COMPLAINT_HEAT * heatMult;
 
     if (!product.inspected && product.quality === "bad") {
       // Blind sale of bad item — special message

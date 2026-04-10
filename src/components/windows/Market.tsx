@@ -22,12 +22,17 @@ function InventoryRow({ product }: { product: Product }) {
   const listProduct = useGameStore((s) => s.listProduct);
   const inspectProduct = useGameStore((s) => s.inspectProduct);
   const isInspecting = product.inspectTicks !== null && product.inspectTicks > 0;
+  const isGrey = product.tier >= 2;
 
   return (
-    <div className="shell-panel-inset p-2 mb-2 font-mono text-xs">
+    <div className={`shell-panel-inset p-2 mb-2 font-mono text-xs${isGrey ? " border-shell-warn/40" : ""}`}
+      style={isGrey ? { borderColor: "rgba(255, 204, 0, 0.3)" } : undefined}
+    >
       <div className="flex justify-between items-start gap-2">
         <div className="min-w-0">
-          <div className="text-shell-text truncate">📦 {product.name}</div>
+          <div className={`truncate${isGrey ? " text-shell-warn" : " text-shell-text"}`}>
+            {isGrey ? "⚠️" : "📦"} {product.name}
+          </div>
           <div className="text-shell-dim">
             bought ${product.buyPrice} · risk {product.risk} · quality:{" "}
             <QualityBadge product={product} />
@@ -76,11 +81,16 @@ function InventoryRow({ product }: { product: Product }) {
 }
 
 function ListingRow({ product }: { product: Product }) {
+  const isGrey = product.tier >= 2;
   return (
-    <div className="shell-panel-inset p-2 mb-2 font-mono text-xs">
+    <div className={`shell-panel-inset p-2 mb-2 font-mono text-xs${isGrey ? " border-shell-warn/40" : ""}`}
+      style={isGrey ? { borderColor: "rgba(255, 204, 0, 0.3)" } : undefined}
+    >
       <div className="flex justify-between items-center gap-2">
         <div className="min-w-0">
-          <div className="text-shell-text truncate">🏷️ {product.name}</div>
+          <div className={`truncate${isGrey ? " text-shell-warn" : " text-shell-text"}`}>
+            {isGrey ? "⚠️" : "🏷️"} {product.name}
+          </div>
           <div className="text-shell-cyan">
             listed @ ${product.sellPrice} · <QualityBadge product={product} />
           </div>

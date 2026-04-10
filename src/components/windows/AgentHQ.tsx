@@ -69,11 +69,14 @@ function CandidateRow({ agent }: { agent: Agent }) {
   const hasSlotsOpen = agents.length < cap;
 
   return (
-    <div className="shell-panel-inset p-3 mb-2 font-mono text-xs">
+    <div className={`shell-panel-inset p-3 mb-2 font-mono text-xs${agent.tier >= 2 ? " border-l-2 border-l-shell-cyan" : ""}`}>
       <div className="flex justify-between items-start gap-2">
         <div className="min-w-0">
           <div className="text-shell-text font-bold text-sm">
             {agent.name}
+            {agent.tier >= 2 && (
+              <span className="text-shell-cyan text-[10px] font-normal ml-2">T2</span>
+            )}
           </div>
           <div className="text-shell-dim mt-0.5 flex gap-3">
             <span>SPD {agent.speed}</span>
