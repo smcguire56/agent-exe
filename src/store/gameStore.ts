@@ -265,8 +265,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newMoney = state.money + moneyDelta;
 
     // 6. Game over check
-    let gameOver = state.gameOver;
-    let gameOverReason = state.gameOverReason;
+    let gameOver: boolean = state.gameOver;
+    let gameOverReason: string | null = state.gameOverReason;
     if (!gameOver && newHeat >= HEAT_GAME_OVER) {
       gameOver = true;
       gameOverReason = getGameOverMessage();
