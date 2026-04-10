@@ -1,0 +1,101 @@
+import { useGameStore } from "../store/gameStore";
+
+interface MeterProps {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+}
+
+function Meter({ label, value, max, color }: MeterProps) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  // Build a chunky block-style bar
+  const blocks = 10;
+  const filled = Math.round((pct / 100) * blocks);
+  const bar = "█".repeat(filled) + "░".repeat(blocks - filled);
+  return (
+    <div className="font-mono text-xs mb-2">
+      <div className="flex justify-between text-shell-dim mb-0.5">
+        <span className="uppercase">{label}</span>
+        <span>
+          lv {value}/{max}
+        </span>
+      </div>
+      <div className={`${color} tracking-tighter text-base leading-none`}>
+        {bar}
+      </div>
+    </div>
+  );
+}
+
+export function StatsPanel() {
+  const hardware = useGameStore((s) => s.hardware);
+  const heat = useGameStore((s) => s.heat);
+  const products = useGameStore((s) => s.products);
+
+  return (
+    <div className="shell-panel flex flex-col h-full overflow-hidden">
+      <div className="shell-title">📊 SYSTEM.STATS</div>
+      <div className="flex-1 overflow-y-auto log-scroll p-3">
+        <div className="text-shell-cyan font-mono text-xs uppercase mb-2 border-b border-shell-border pb-1">
+          Hardware
+        </div>
+        <Meter
+          label="CPU"
+          value={hardware.cpu}
+          max={10}
+          color="text-shell-good"
+        />
+        <Meter
+          label="RAM"
+          value={hardware.ram}
+          max={10}
+          color="text-shell-cyan"
+        />
+        <Meter
+          label="Cooling"
+          value={hardware.cooling}
+          max={10}
+          color="text-shell-cyan"
+        />
+        <Meter
+          label="Storage"
+          value={hardware.storage}
+          max={10}
+          color="text-shell-warn"
+        />
+
+        <div className="text-shell-cyan font-mono text-xs uppercase mt-4 mb-2 border-b border-shell-border pb-1">
+          Operations
+        </div>
+        <Meter
+          label="Heat"
+          value={heat}
+          max={100}
+          color={
+            heat >= 80
+              ? "text-shell-danger"
+              : heat >= 50
+                ? "text-shell-warn"
+                : "text-shell-good"
+          }
+        />
+
+        <div className="font-mono text-xs text-shell-dim mt-4 space-y-1">
+          <div className="flex justify-between">
+            <span>📦 Inventory</span>
+            <span className="text-shell-text" data-testid="inventory-count">
+              {products.length}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>🔌 Uptime</span>
+            <span className="text-shell-text">00:14:22</span>
+          </div>
+        </div>
+
+        <button className="shell-button w-full mt-4">⬆ UPGRADE</button>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #0a0e14;
+    color: #c5d0dc;
+    overflow: hidden;
+  }
+
+  body {
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  .shell-panel {
+    @apply bg-shell-panel border-2 border-shell-border;
+    box-shadow:
+      inset -2px -2px 0 0 #0a0e14,
+      inset 2px 2px 0 0 #3a4554;
+  }
+
+  .shell-panel-inset {
+    @apply bg-shell-bg border-2 border-shell-border;
+    box-shadow:
+      inset 2px 2px 0 0 #0a0e14,
+      inset -2px -2px 0 0 #3a4554;
+  }
+
+  .shell-button {
+    @apply bg-shell-panel2 border-2 border-shell-border px-3 py-1 text-shell-text;
+    @apply hover:bg-shell-border active:translate-x-px active:translate-y-px;
+    box-shadow:
+      inset -2px -2px 0 0 #0a0e14,
+      inset 2px 2px 0 0 #3a4554;
+    font-family: "JetBrains Mono", "Consolas", monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .shell-title {
+    @apply text-shell-cyan font-mono text-xs uppercase tracking-widest px-2 py-1;
+    @apply border-b-2 border-shell-border bg-shell-panel2;
+  }
+
+  .meter-bar {
+    @apply h-2 bg-shell-bg border border-shell-border overflow-hidden relative;
+  }
+
+  .meter-fill {
+    @apply h-full transition-all duration-300;
+  }
+}
+
+/* CRT scanlines overlay */
+.crt::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 9999;
+}
+
+.crt::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  z-index: 9998;
+}
+
+/* Custom scrollbar for the log */
+.log-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.log-scroll::-webkit-scrollbar-track {
+  background: #0a0e14;
+  border-left: 2px solid #2a3340;
+}
+
+.log-scroll::-webkit-scrollbar-thumb {
+  background: #2a3340;
+  border: 1px solid #3a4554;
+}
+
+.log-scroll::-webkit-scrollbar-thumb:hover {
+  background: #3a4554;
+}
