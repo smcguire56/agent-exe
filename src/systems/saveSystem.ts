@@ -1,7 +1,7 @@
 import type { GameState } from "../types";
 
 const SAVE_KEY = "shellos_save_v1";
-const AUTO_SAVE_INTERVAL_DAYS = 30;
+const AUTO_SAVE_INTERVAL_DAYS = 1;
 
 const SAVE_MESSAGES = [
   "Backing up to the cloud... (it's actually just your browser)",
