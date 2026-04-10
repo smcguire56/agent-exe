@@ -147,17 +147,121 @@ export function randomMailCategory(): MailCategory {
   return "complaint";
 }
 
-/** Generate a contextual mail for a specific game event. */
-export function saleMailTemplate(productName: string, price: number): MailTemplate {
+/** Generate a contextual sale mail based on product quality and inspection status. */
+export function saleMailTemplate(
+  productName: string,
+  price: number,
+  quality: string,
+  inspected: boolean,
+  tier: number,
+): MailTemplate {
+  // Quality-specific buyer reactions
+  const qualityReactions: Record<string, string[]> = {
+    excellent: [
+      `Customer is THRILLED with "${productName}." Left a 5-star review: "This changed my life. I'm not being dramatic."`,
+      `Buyer says "${productName}" exceeded expectations. They want to know if you have more. You don't. Lie anyway.`,
+      `"${productName}" sold for $${price}. Customer described it as "the highlight of my week." Their week must be rough.`,
+    ],
+    good: [
+      `"${productName}" sold for $${price}. Customer says it's "exactly what I needed." Inspection paid off.`,
+      `Buyer happy with "${productName}." 4 stars. One star deducted because "the packaging was boring."`,
+      `Solid sale: "${productName}" at $${price}. Customer wrote "would buy again." They won't. But still.`,
+    ],
+    ok: [
+      `"${productName}" sold for $${price}. Customer says it "works, I guess." Ringing endorsement.`,
+      `Sale complete: "${productName}" at $${price}. Buyer described it as "adequate." We'll take it.`,
+      `"${productName}" moved for $${price}. Customer review: "It's a thing. I have it now." Three stars.`,
+    ],
+    bad: [
+      `"${productName}" sold for $${price}. Customer hasn't complained yet. Give it time.`,
+      `Sold "${productName}" for $${price}. Buyer's initial reaction: "...huh." Not great. Not actionable.`,
+      `"${productName}" at $${price}. Customer asked if the return policy is "flexible." It is not.`,
+    ],
+    unknown: [
+      `Blind sale: "${productName}" for $${price}. No idea what quality they got. That's the fun part. For us.`,
+      `"${productName}" sold uninspected for $${price}. Rolling the dice on customer satisfaction. Bold strategy.`,
+      `Sold "${productName}" blind at $${price}. If they complain, we'll pretend we never got the email.`,
+    ],
+  };
+
+  const pool = qualityReactions[quality] ?? qualityReactions.unknown;
+  const body = randomFrom(pool);
+
+  const greyTag = tier >= 2 ? " [GREY MARKET]" : "";
+  const inspectTag = inspected ? ` [${quality.toUpperCase()}]` : " [UNINSPECTED]";
+
   return {
-    from: "ShellOS Payments",
-    subject: `Sale: "${productName}" — $${price}`,
-    body: `Your listing "${productName}" has sold for $${price}. The money has been deposited into your account. Spend it wisely. (You won't.)`,
+    from: inspected ? "ShellOS Payments" : "ShellOS Payments (Blind Sale)",
+    subject: `Sale: "${productName}"${inspectTag}${greyTag} — $${price}`,
+    body,
     category: "sales",
   };
 }
 
-export function complaintMailTemplate(productName: string): MailTemplate {
+/** Generate a contextual complaint mail based on product quality and inspection status. */
+export function complaintMailTemplate(
+  productName: string,
+  quality: string,
+  inspected: boolean,
+  tier: number,
+): MailTemplate {
+  // Blind sale complaints are worse and funnier
+  if (!inspected) {
+    const blindComplaints = [
+      {
+        from: "Furious Customer",
+        subject: `RE: "${productName}" — You didn't even CHECK this?`,
+        body: `I can tell you didn't inspect this before shipping. How can I tell? Because NO ONE who looked at this would have thought "yes, this is fit for sale." I want a refund and a personal apology. In that order.`,
+      },
+      {
+        from: "Betrayed Buyer",
+        subject: `"${productName}" — BLIND SALE REGRET`,
+        body: `You sold me "${productName}" without even inspecting it first. I know because the quality is "${quality}" and there's NO WAY you knew that and still charged me. My trust is broken. So is the product.`,
+      },
+      {
+        from: "Anonymous Reviewer",
+        subject: `1 STAR: "${productName}" was clearly uninspected`,
+        body: `Review: "Seller clearly did not look at this item before listing it. It arrived in a condition I can only describe as 'ambitious.' Would not recommend. Would actively un-recommend. -1 stars if possible."`,
+      },
+    ];
+    return { ...randomFrom(blindComplaints), category: "complaint" };
+  }
+
+  // Inspected but bad quality — you knew what you were doing
+  if (quality === "bad") {
+    const badComplaints = [
+      {
+        from: "Suspicious Customer",
+        subject: `RE: "${productName}" — You KNEW this was bad`,
+        body: `I noticed this item was inspected and listed anyway despite being BAD quality. Bold. I respect the hustle. I still want a refund though. And maybe an explanation.`,
+      },
+      {
+        from: "Disappointed Regular",
+        subject: `"${productName}" — Bad quality, sold anyway`,
+        body: `Look, I get that margins are tight. But selling a product you INSPECTED and KNEW was bad? That's not "entrepreneurship," that's just a scam with extra steps. Reported.`,
+      },
+    ];
+    return { ...randomFrom(badComplaints), category: "complaint" };
+  }
+
+  // Grey market complaints are spicier
+  if (tier >= 2) {
+    const greyComplaints = [
+      {
+        from: "Alarmed Customer",
+        subject: `RE: "${productName}" — Is this... legal?`,
+        body: `This "${productName}" feels distinctly unofficial. The label says "Guochi" instead of "Gucci" and the serial number is just the word "serial" written in Sharpie. I have questions. Many questions.`,
+      },
+      {
+        from: "Concerned Buyer",
+        subject: `"${productName}" — Grey market alert`,
+        body: `My friend who works in customs took one look at this and started laughing. Then stopped laughing. Then made a phone call. I think we're both in trouble now.`,
+      },
+    ];
+    return { ...randomFrom(greyComplaints), category: "complaint" };
+  }
+
+  // Generic complaint for inspected ok/good items (rare but possible)
   const tmpl = randomFrom(COMPLAINT_MAILS);
   return {
     ...tmpl,

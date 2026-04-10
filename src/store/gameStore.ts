@@ -238,6 +238,7 @@ interface GameStore extends GameState {
   pushEvent: (e: Omit<EventLog, "id" | "timestamp">) => void;
   tick: () => void;
   assignTask: (agentId: string) => void;
+  assignAllTasks: () => void;
   listProduct: (productId: string) => void;
   hireAgent: () => void;
   upgradeCpu: () => void;
@@ -359,9 +360,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let heatDelta = 0;
     let itemsSoldThisTick = 0;
     let earnedThisTick = 0;
-    const soldNames: { name: string; price: number }[] = [];
-    let hadComplaint = false;
-    let complaintProductName = "";
+    interface SoldInfo { name: string; price: number; quality: string; inspected: boolean; tier: number }
+    const soldItems: SoldInfo[] = [];
+    interface ComplaintInfo { name: string; quality: string; inspected: boolean; tier: number }
+    const complaints: ComplaintInfo[] = [];
     const remainingProducts: Product[] = [];
     for (const p of workingProducts) {
       const result = processProduct(p, newTime, teamComplaintMult);
@@ -370,11 +372,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       } else {
         itemsSoldThisTick += 1;
         earnedThisTick += result.moneyDelta;
-        soldNames.push({ name: p.name, price: result.moneyDelta });
+        soldItems.push({ name: p.name, price: result.moneyDelta, quality: p.quality, inspected: p.inspected, tier: p.tier });
       }
       if (result.heatDelta > 0) {
-        hadComplaint = true;
-        complaintProductName = p.name;
+        complaints.push({ name: p.name, quality: p.quality, inspected: p.inspected, tier: p.tier });
       }
       moneyDelta += result.moneyDelta;
       heatDelta += result.heatDelta;
@@ -484,8 +485,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newMails: Mail[] = [...state.mails];
     const MAX_MAILS = 50;
 
-    for (const sold of soldNames) {
-      const tmpl = saleMailTemplate(sold.name, sold.price);
+    for (const sold of soldItems) {
+      const tmpl = saleMailTemplate(sold.name, sold.price, sold.quality, sold.inspected, sold.tier);
       newMails.push({
         ...tmpl,
         id: nextEventId(),
@@ -493,8 +494,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         read: false,
       });
     }
-    if (hadComplaint) {
-      const tmpl = complaintMailTemplate(complaintProductName);
+    for (const c of complaints) {
+      const tmpl = complaintMailTemplate(c.name, c.quality, c.inspected, c.tier);
       newMails.push({
         ...tmpl,
         id: nextEventId(),
@@ -543,7 +544,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  devSet: (patch) => set(patch as Partial<GameStore>),
+  devSet: (patch) => {
+    set(patch as Partial<GameStore>);
+    // Check tier 2 unlock after dev changes (e.g. setting money)
+    const state = get();
+    if (!state.tier2Unlocked) {
+      const shouldUnlock =
+        state.stats.totalEarned >= TIER_2_UNLOCK_EARNED ||
+        state.money >= TIER_2_UNLOCK_EARNED;
+      if (shouldUnlock) {
+        const usedNames = new Set(state.agents.map((a) => a.name));
+        set({
+          tier2Unlocked: true,
+          hireCandidates: generateCandidates(usedNames, true),
+          hireCandidatesDay: state.time.day,
+          events: appendEvents(state.events, [
+            {
+              timestamp: { ...state.time },
+              level: "system",
+              icon: "🔓",
+              message: "SHELLOS: New agent class detected. Competency level: concerning. Access granted.",
+            },
+            {
+              timestamp: { ...state.time },
+              level: "good",
+              icon: "⚡",
+              message: "Tier 2 agents and grey-market products are now available. Check AgentHQ.",
+            },
+          ]),
+        });
+      }
+    }
+  },
 
   restart: () => {
     set({
@@ -603,6 +635,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
           message: randomFrom(SOURCING_START_MESSAGES),
         },
       ]),
+    });
+  },
+
+  assignAllTasks: () => {
+    const state = get();
+    const idle = state.agents.filter((a) => a.status === "idle");
+    if (idle.length === 0) return;
+
+    const eventsBatch: Omit<EventLog, "id">[] = [];
+    const updatedAgents = state.agents.map((a) => {
+      if (a.status !== "idle") return a;
+      const ticks = effectiveTaskTicks(SOURCING_TASK_TICKS, a);
+      eventsBatch.push({
+        timestamp: { ...state.time },
+        level: "agent",
+        source: a.name,
+        icon: "🤖",
+        message: randomFrom(SOURCING_START_MESSAGES),
+      });
+      return {
+        ...a,
+        status: "working" as const,
+        currentTask: {
+          id: makeId("task"),
+          kind: "source" as const,
+          label: "Sourcing... something",
+          ticksRemaining: ticks,
+        },
+        mood: "locked in",
+      };
+    });
+
+    set({
+      agents: updatedAgents,
+      events: appendEvents(state.events, eventsBatch),
     });
   },
 

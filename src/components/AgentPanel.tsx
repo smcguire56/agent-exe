@@ -63,8 +63,10 @@ export function AgentPanel() {
   const hardware = useGameStore((s) => s.hardware);
   const money = useGameStore((s) => s.money);
   const hireAgent = useGameStore((s) => s.hireAgent);
+  const assignAllTasks = useGameStore((s) => s.assignAllTasks);
 
   const cap = maxAgents(hardware);
+  const idleCount = agents.filter((a) => a.status === "idle").length;
   const atCapacity = agents.length >= cap;
   const tooPoor = money < HIRE_COST;
   const hireDisabled = atCapacity || tooPoor;
@@ -87,6 +89,14 @@ export function AgentPanel() {
         {agents.map((a) => (
           <AgentRow key={a.id} agent={a} />
         ))}
+        {idleCount > 0 && (
+          <button
+            onClick={assignAllTasks}
+            className="shell-button w-full mt-2 !text-shell-cyan"
+          >
+            ▶▶ SOURCE ALL ({idleCount} idle)
+          </button>
+        )}
         <button
           onClick={hireAgent}
           disabled={hireDisabled}
