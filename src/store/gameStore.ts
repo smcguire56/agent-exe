@@ -5,6 +5,7 @@ import type {
   GameStats,
   GameState,
   Hardware,
+  Mail,
   Product,
   Task,
 } from "../types";
@@ -15,6 +16,8 @@ import {
 import { TIER_1_NAMES } from "../data/agentNames";
 import { pickTraits, generateBio, randomMood } from "../data/traits";
 import { advanceTime, randomFrom, makeId } from "../systems/gameTick";
+import { effectiveTaskTicks, getModifiers, effectiveWage } from "../systems/traitEffects";
+import { randomMail, randomMailCategory, saleMailTemplate, complaintMailTemplate } from "../data/mails";
 import { processAgent } from "../systems/agentSystem";
 import { processProduct } from "../systems/productSystem";
 import {
@@ -200,6 +203,8 @@ interface GameStore extends GameState {
   hireCandidate: (candidateId: string) => void;
   refreshCandidates: () => void;
   inspectProduct: (productId: string, type: "quick" | "deep") => void;
+  readMail: (mailId: string) => void;
+  deleteMail: (mailId: string) => void;
   devSet: (patch: Partial<GameState>) => void;
 }
 
@@ -235,6 +240,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   stats: { ...initialStats },
   hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
   hireCandidatesDay: 1,
+  mails: [],
 
   setActiveApp: (app) => set({ activeApp: app }),
   toggleWindow: (appId) => {
@@ -291,19 +297,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // 2. Process products (listings tick down, may sell and disappear)
+    // Compute team-wide complaint multiplier (Paranoid agents help)
+    let teamComplaintMult = 1.0;
+    for (const a of newAgents) {
+      const mods = getModifiers(a);
+      teamComplaintMult *= mods.complaintMult;
+    }
+
     let moneyDelta = 0;
     let heatDelta = 0;
     let itemsSoldThisTick = 0;
     let earnedThisTick = 0;
+    const soldNames: { name: string; price: number }[] = [];
+    let hadComplaint = false;
+    let complaintProductName = "";
     const remainingProducts: Product[] = [];
     for (const p of workingProducts) {
-      const result = processProduct(p, newTime);
+      const result = processProduct(p, newTime, teamComplaintMult);
       if (result.product) {
         remainingProducts.push(result.product);
       } else {
-        // Product was removed because it sold
         itemsSoldThisTick += 1;
         earnedThisTick += result.moneyDelta;
+        soldNames.push({ name: p.name, price: result.moneyDelta });
+      }
+      if (result.heatDelta > 0) {
+        hadComplaint = true;
+        complaintProductName = p.name;
       }
       moneyDelta += result.moneyDelta;
       heatDelta += result.heatDelta;
@@ -328,6 +348,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // 5. Passive heat decay
     heatDelta -= HEAT_DECAY_PER_TICK;
+
+    // 5b. Daily wage deduction (on day change)
+    if (newTime.day !== state.time.day) {
+      let totalWages = 0;
+      for (const a of newAgents) {
+        totalWages += effectiveWage(a);
+      }
+      if (totalWages > 0) {
+        moneyDelta -= totalWages;
+        eventsBatch.push({
+          timestamp: { ...newTime },
+          level: "info",
+          icon: "💸",
+          message: `Daily wages paid: $${totalWages} across ${newAgents.length} agent(s).`,
+        });
+      }
+    }
 
     const newHeat = Math.min(100, Math.max(0, state.heat + heatDelta));
     const newMoney = state.money + moneyDelta;
@@ -372,6 +409,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
     }
 
+    // 7. Generate mails from this tick's events
+    const newMails: Mail[] = [...state.mails];
+    const MAX_MAILS = 50;
+
+    for (const sold of soldNames) {
+      const tmpl = saleMailTemplate(sold.name, sold.price);
+      newMails.push({
+        ...tmpl,
+        id: nextEventId(),
+        timestamp: { ...newTime },
+        read: false,
+      });
+    }
+    if (hadComplaint) {
+      const tmpl = complaintMailTemplate(complaintProductName);
+      newMails.push({
+        ...tmpl,
+        id: nextEventId(),
+        timestamp: { ...newTime },
+        read: false,
+      });
+    }
+    // Random spam/system mail (~5% chance per tick)
+    if (Math.random() < 0.05) {
+      const cat = randomMailCategory();
+      const tmpl = randomMail(cat);
+      newMails.push({
+        ...tmpl,
+        id: nextEventId(),
+        timestamp: { ...newTime },
+        read: false,
+      });
+    }
+    // Trim old mails
+    const trimmedMails = newMails.length > MAX_MAILS
+      ? newMails.slice(newMails.length - MAX_MAILS)
+      : newMails;
+
     set({
       time: newTime,
       agents: newAgents,
@@ -384,6 +459,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       stats: newStats,
       hireCandidates: newCandidates,
       hireCandidatesDay: newCandidatesDay,
+      mails: trimmedMails,
     });
   },
 
@@ -408,6 +484,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       stats: { ...initialStats },
       hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
       hireCandidatesDay: 1,
+      mails: [],
     });
   },
 
@@ -416,11 +493,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const agent = state.agents.find((a) => a.id === agentId);
     if (!agent || agent.status !== "idle") return;
 
+    const ticks = effectiveTaskTicks(SOURCING_TASK_TICKS, agent);
     const task: Task = {
       id: makeId("task"),
       kind: "source",
       label: "Sourcing... something",
-      ticksRemaining: SOURCING_TASK_TICKS,
+      ticksRemaining: ticks,
     };
 
     const updatedAgent: Agent = {
@@ -451,10 +529,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const target = state.products.find((p) => p.id === productId);
     if (!target || target.listed) return;
 
+    // Creative agents boost sell price
+    let bonus = 0;
+    for (const a of state.agents) {
+      const mods = getModifiers(a);
+      if (mods.sellPriceBonus > 0) {
+        bonus = Math.max(bonus, mods.sellPriceBonus);
+      }
+    }
+    const boostedPrice = target.sellPrice + bonus;
+
     set({
       products: state.products.map((p) =>
         p.id === productId
-          ? { ...p, listed: true, ticksToSell: SALE_TICKS }
+          ? { ...p, listed: true, ticksToSell: SALE_TICKS, sellPrice: boostedPrice }
           : p,
       ),
       events: appendEvents(state.events, [
@@ -462,7 +550,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           timestamp: { ...state.time },
           level: "info",
           icon: "🏷️",
-          message: `Listed "${target.name}" for $${target.sellPrice}. Description is "technically accurate."`,
+          message: `Listed "${target.name}" for $${boostedPrice}.${bonus > 0 ? ` (+$${bonus} creative bonus!)` : ' Description is "technically accurate."'}`,
         },
       ]),
     });
@@ -639,6 +727,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
         },
       ]),
     });
+  },
+
+  readMail: (mailId) => {
+    set((state) => ({
+      mails: state.mails.map((m) =>
+        m.id === mailId ? { ...m, read: true } : m,
+      ),
+    }));
+  },
+
+  deleteMail: (mailId) => {
+    set((state) => ({
+      mails: state.mails.filter((m) => m.id !== mailId),
+    }));
   },
 
   upgradeCpu: () => {

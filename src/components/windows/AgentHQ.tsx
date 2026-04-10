@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGameStore, maxAgents, HIRE_COST } from "../../store/gameStore";
 import type { Agent } from "../../types";
+import { traitDescription, effectiveWage } from "../../systems/traitEffects";
 
 function AgentRow({ agent }: { agent: Agent }) {
   const assignTask = useGameStore((s) => s.assignTask);
@@ -31,11 +32,15 @@ function AgentRow({ agent }: { agent: Agent }) {
           </div>
           {agent.traits.length > 0 && (
             <div className="text-shell-warn text-[10px] mt-0.5">
-              {agent.traits.join(" · ")}
+              {agent.traits.map((t, i) => (
+                <span key={t} title={traitDescription(t)}>
+                  {i > 0 ? " · " : ""}{t}
+                </span>
+              ))}
             </div>
           )}
           <div className="text-shell-dim italic text-[10px] mt-0.5">
-            mood: {agent.mood}
+            mood: {agent.mood} · wage: ${effectiveWage(agent)}/day
           </div>
         </div>
         <div className="shrink-0 flex flex-col gap-1">
@@ -76,8 +81,17 @@ function CandidateRow({ agent }: { agent: Agent }) {
             <span>WAGE ${agent.wage}/day</span>
           </div>
           <div className="text-shell-warn text-[10px] mt-1">
-            {agent.traits.join(" · ")}
+            {agent.traits.map((t, i) => (
+              <span key={t} title={traitDescription(t)}>
+                {i > 0 ? " · " : ""}{t}
+              </span>
+            ))}
           </div>
+          {agent.traits.length > 0 && (
+            <div className="text-shell-dim text-[9px] mt-0.5">
+              {agent.traits.map((t) => traitDescription(t)).filter(Boolean).join(" | ")}
+            </div>
+          )}
           <div className="text-shell-dim italic mt-1 leading-snug">
             "{agent.bio}"
           </div>

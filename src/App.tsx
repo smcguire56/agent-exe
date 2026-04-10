@@ -8,6 +8,7 @@ import { AppWindow } from "./components/AppWindow";
 import { AgentHQ } from "./components/windows/AgentHQ";
 import { Market } from "./components/windows/Market";
 import { Hardware } from "./components/windows/Hardware";
+import { ShellMail } from "./components/windows/ShellMail";
 import { GameOverScreen } from "./components/GameOverScreen";
 import { DevTools } from "./components/DevTools";
 import { useGameStore } from "./store/gameStore";
@@ -20,6 +21,7 @@ const WINDOW_DEFS: Record<
   agentHQ: { title: "AGENT.HQ — Personnel Manager", icon: "🤖", component: AgentHQ, defaultPos: { x: 60, y: 20 } },
   market: { title: "MARKET.EXE — Source & List", icon: "🛒", component: Market, width: 650, defaultPos: { x: 100, y: 40 } },
   hardware: { title: "HARDWARE.SHOP — Upgrades", icon: "🖥️", component: Hardware, width: 500, defaultPos: { x: 140, y: 60 } },
+  mail: { title: "SHELL.MAIL — Inbox", icon: "📬", component: ShellMail, width: 600, height: 420, defaultPos: { x: 120, y: 50 } },
 };
 
 function OpenWindows() {

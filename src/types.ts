@@ -89,6 +89,18 @@ export interface GameTime {
   minute: number;
 }
 
+export type MailCategory = "sales" | "complaint" | "agent" | "system" | "spam";
+
+export interface Mail {
+  id: string;
+  timestamp: { day: number; hour: number; minute: number };
+  from: string;
+  subject: string;
+  body: string;
+  category: MailCategory;
+  read: boolean;
+}
+
 export interface GameStats {
   itemsSold: number;
   agentsHired: number;
@@ -114,4 +126,5 @@ export interface GameState {
   stats: GameStats;
   hireCandidates: Agent[];
   hireCandidatesDay: number;
+  mails: Mail[];
 }

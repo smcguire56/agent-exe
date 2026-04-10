@@ -6,6 +6,11 @@ import {
   ERROR_MESSAGES,
 } from "../data/messages";
 import { makeId, randomFrom } from "./gameTick";
+import {
+  effectiveAccuracy,
+  rollTraitFlavor,
+  rollKleptoSteal,
+} from "./traitEffects";
 
 // Probability per in-progress tick that we emit a flavor chatter line
 const FLAVOR_CHANCE = 0.35;
@@ -47,6 +52,10 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
         }),
       );
     }
+    // Trait-specific flavor chatter
+    const traitEvent = rollTraitFlavor(agent, time);
+    if (traitEvent) result.eventsToAdd.push(traitEvent);
+
     result.agent = {
       ...agent,
       currentTask: { ...task, ticksRemaining: newTicksRemaining },
@@ -54,12 +63,11 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
     return result;
   }
 
-  // Task complete — accuracy roll
-  const success = Math.random() < agent.accuracy;
+  // Task complete — accuracy roll (trait-modified)
+  const success = Math.random() < effectiveAccuracy(agent);
 
   if (success) {
     const template = randomFrom(TIER_1_PRODUCTS);
-    // Assign hidden quality — revealed on inspection
     const qualityRoll = Math.random();
     const hiddenQuality =
       qualityRoll < 0.15 ? "bad" as const
@@ -71,11 +79,18 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
       ...template,
       id: makeId("prod"),
       quality: hiddenQuality,
-      // 25% chance the item has a hidden trait we'll surface later
       hiddenTrait:
         Math.random() < 0.25 ? randomFrom(HIDDEN_TRAITS) : null,
     };
-    result.productsToAdd.push(product);
+
+    // Kleptomaniac steal roll — product sourced but "lost"
+    const stealEvent = rollKleptoSteal(agent, time);
+    if (stealEvent) {
+      result.eventsToAdd.push(stealEvent);
+      // Product vanishes — don't add it to inventory
+    } else {
+      result.productsToAdd.push(product);
+    }
 
     result.eventsToAdd.push(
       makeEvent(time, {

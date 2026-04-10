@@ -51,6 +51,7 @@ function complaintChance(product: Product): number {
 export function processProduct(
   product: Product,
   time: GameTime,
+  complaintMult: number = 1.0,
 ): ProductTickResult {
   const result: ProductTickResult = {
     product,
@@ -120,8 +121,8 @@ export function processProduct(
     message: `SOLD: "${product.name}" for $${finalPrice}. ${randomFrom(SALE_MESSAGES)}`,
   });
 
-  // Complaint roll
-  const cc = complaintChance(product);
+  // Complaint roll (Paranoid agents reduce complaints via complaintMult)
+  const cc = complaintChance(product) * complaintMult;
   if (Math.random() < cc) {
     result.heatDelta = COMPLAINT_HEAT;
 
