@@ -1,4 +1,6 @@
+import { useState, useRef, useEffect } from "react";
 import { useGameStore } from "../store/gameStore";
+import { isMuted, setMuted } from "../systems/sound";
 
 const pad = (n: number) => n.toString().padStart(2, "0");
 
@@ -7,6 +9,25 @@ export function TopBar() {
   const time = useGameStore((s) => s.time);
   const heat = useGameStore((s) => s.heat);
   const hardware = useGameStore((s) => s.hardware);
+  const [muted, setMutedState] = useState(isMuted());
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  };
+
+  const prevMoney = useRef(money);
+  const [moneyFlash, setMoneyFlash] = useState(false);
+
+  useEffect(() => {
+    if (money > prevMoney.current) {
+      setMoneyFlash(true);
+      const t = setTimeout(() => setMoneyFlash(false), 600);
+      return () => clearTimeout(t);
+    }
+    prevMoney.current = money;
+  }, [money]);
 
   // Placeholder derived stats
   const cpuLoad = 35;
@@ -25,7 +46,7 @@ export function TopBar() {
         <span className="text-shell-cyan font-bold tracking-widest">
           SHELLOS
         </span>
-        <span className="text-shell-good">
+        <span className={`text-shell-good${moneyFlash ? " animate-flash-green" : ""}`}>
           💰 ${money.toLocaleString()}
         </span>
         <span className="text-shell-text">
@@ -34,7 +55,7 @@ export function TopBar() {
         <span className="text-shell-text">
           🌡️ {temp}°C
         </span>
-        <span className={heatColor}>
+        <span className={`${heatColor}${heat >= 50 ? " animate-heat-pulse" : ""}`}>
           ⚠️ Heat {heat}%
         </span>
       </div>
@@ -42,6 +63,13 @@ export function TopBar() {
         <span className="text-shell-dim">
           HW.cpu lv{hardware.cpu}
         </span>
+        <button
+          onClick={toggleMute}
+          className="text-shell-dim hover:text-shell-text transition-colors"
+          title={muted ? "Unmute" : "Mute"}
+        >
+          {muted ? "🔇" : "🔊"}
+        </button>
         <span className="text-shell-cyan" data-testid="topbar-clock">
           🕐 Day {time.day} — {pad(time.hour)}:{pad(time.minute)}
         </span>

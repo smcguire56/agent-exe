@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGameStore } from "../store/gameStore";
 
 const APPS: { id: string; label: string; icon: string }[] = [
@@ -13,12 +14,41 @@ export function Taskbar() {
   const toggleWindow = useGameStore((s) => s.toggleWindow);
   const focusWindow = useGameStore((s) => s.focusWindow);
   const unreadMails = useGameStore((s) => s.mails.filter((m) => !m.read).length);
+  const saveGame = useGameStore((s) => s.saveGame);
+  const paused = useGameStore((s) => s.paused);
+  const setPaused = useGameStore((s) => s.setPaused);
+  const [startOpen, setStartOpen] = useState(false);
 
   return (
     <div className="shell-panel flex items-center px-2 py-1 gap-2 border-t-2">
-      <div className="shell-button !text-shell-cyan !py-1.5 mr-2 flex items-center gap-2">
-        <span>▣</span>
-        <span>START</span>
+      <div className="relative">
+        <button
+          onClick={() => setStartOpen(!startOpen)}
+          className="shell-button !text-shell-cyan !py-1.5 flex items-center gap-2"
+        >
+          <span>▣</span>
+          <span>START</span>
+        </button>
+        {startOpen && (
+          <div className="absolute bottom-full left-0 mb-1 w-48 shell-panel border-2 border-shell-border z-50">
+            <button
+              onClick={() => { saveGame(); setStartOpen(false); }}
+              className="w-full text-left px-3 py-1.5 font-mono text-xs text-shell-text hover:bg-shell-border flex items-center gap-2"
+            >
+              💾 Backup to Cloud
+            </button>
+            <button
+              onClick={() => { setPaused(!paused); setStartOpen(false); }}
+              className="w-full text-left px-3 py-1.5 font-mono text-xs text-shell-text hover:bg-shell-border flex items-center gap-2"
+            >
+              {paused ? "▶ Resume" : "⏸ Pause"}
+            </button>
+            <div className="border-t border-shell-border" />
+            <div className="px-3 py-1 font-mono text-[10px] text-shell-dim">
+              SHELLOS v0.1.4
+            </div>
+          </div>
+        )}
       </div>
       <div className="h-6 w-px bg-shell-border" />
       {APPS.map((app) => {

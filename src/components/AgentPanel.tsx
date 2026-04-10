@@ -31,7 +31,7 @@ function AgentRow({ agent }: { agent: Agent }) {
           </div>
         </div>
         <div className={`${statusColor[agent.status]} text-right`}>
-          <div className="text-base leading-none">
+          <div className={`text-base leading-none${agent.status === "working" ? " animate-pulse-glow" : ""}`}>
             {statusDot[agent.status]}
           </div>
           <div className="uppercase">{agent.status}</div>

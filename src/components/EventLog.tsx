@@ -38,7 +38,7 @@ export function EventLog() {
         {events.map((e) => {
           const ts = `D${e.timestamp.day} ${pad(e.timestamp.hour)}:${pad(e.timestamp.minute)}`;
           return (
-            <div key={e.id} className="mb-1 flex gap-2">
+            <div key={e.id} className="mb-1 flex gap-2 animate-slide-in">
               <span className="text-shell-dim shrink-0">[{ts}]</span>
               {e.icon && <span className="shrink-0">{e.icon}</span>}
               <span className={levelColor[e.level]}>

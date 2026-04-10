@@ -44,10 +44,43 @@ export default {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(100vh)" },
         },
+        "slide-in": {
+          "0%": { opacity: "0", transform: "translateX(20px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        "flash-green": {
+          "0%": { color: "#39ff14", textShadow: "0 0 8px #39ff14" },
+          "100%": { color: "inherit", textShadow: "none" },
+        },
+        "flash-red": {
+          "0%": { backgroundColor: "rgba(255, 56, 96, 0.3)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "pulse-glow": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
+        "heat-pulse": {
+          "0%, 100%": { textShadow: "none" },
+          "50%": { textShadow: "0 0 8px #ff3860" },
+        },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%": { transform: "translateX(-2px)" },
+          "40%": { transform: "translateX(2px)" },
+          "60%": { transform: "translateX(-1px)" },
+          "80%": { transform: "translateX(1px)" },
+        },
       },
       animation: {
         blink: "blink 1s steps(1) infinite",
         scanline: "scanline 8s linear infinite",
+        "slide-in": "slide-in 0.3s ease-out",
+        "flash-green": "flash-green 0.6s ease-out",
+        "flash-red": "flash-red 0.5s ease-out",
+        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "heat-pulse": "heat-pulse 1s ease-in-out infinite",
+        shake: "shake 0.3s ease-in-out",
       },
     },
   },

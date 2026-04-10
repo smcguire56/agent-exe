@@ -18,6 +18,7 @@ import { pickTraits, generateBio, randomMood } from "../data/traits";
 import { advanceTime, randomFrom, makeId } from "../systems/gameTick";
 import { effectiveTaskTicks, getModifiers, effectiveWage } from "../systems/traitEffects";
 import { randomMail, randomMailCategory, saleMailTemplate, complaintMailTemplate } from "../data/mails";
+import { saveGame as saveToStorage, loadGame as loadFromStorage, shouldAutoSave, deleteSave as deleteStorageSave } from "../systems/saveSystem";
 import { processAgent } from "../systems/agentSystem";
 import { processProduct } from "../systems/productSystem";
 import {
@@ -205,6 +206,10 @@ interface GameStore extends GameState {
   inspectProduct: (productId: string, type: "quick" | "deep") => void;
   readMail: (mailId: string) => void;
   deleteMail: (mailId: string) => void;
+  saveGame: () => void;
+  loadSave: () => boolean;
+  deleteSave: () => void;
+  lastSaveDay: number;
   devSet: (patch: Partial<GameState>) => void;
 }
 
@@ -241,6 +246,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
   hireCandidatesDay: 1,
   mails: [],
+  lastSaveDay: 1,
 
   setActiveApp: (app) => set({ activeApp: app }),
   toggleWindow: (appId) => {
@@ -447,6 +453,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ? newMails.slice(newMails.length - MAX_MAILS)
       : newMails;
 
+    // 8. Auto-save check
+    const autoSave = newTime.day !== state.time.day &&
+      shouldAutoSave(newTime.day, state.lastSaveDay);
+
     set({
       time: newTime,
       agents: newAgents,
@@ -461,6 +471,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hireCandidatesDay: newCandidatesDay,
       mails: trimmedMails,
     });
+
+    if (autoSave && !gameOver) {
+      get().saveGame();
+    }
   },
 
   devSet: (patch) => set(patch as Partial<GameStore>),
@@ -485,6 +499,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hireCandidates: generateCandidates(new Set(["Bryan", "Pam"])),
       hireCandidatesDay: 1,
       mails: [],
+      lastSaveDay: 1,
     });
   },
 
@@ -741,6 +756,43 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((state) => ({
       mails: state.mails.filter((m) => m.id !== mailId),
     }));
+  },
+
+  saveGame: () => {
+    const state = get();
+    const msg = saveToStorage(state);
+    set({
+      lastSaveDay: state.time.day,
+      events: appendEvents(state.events, [
+        {
+          timestamp: { ...state.time },
+          level: "system",
+          icon: "💾",
+          message: msg,
+        },
+      ]),
+    });
+  },
+
+  loadSave: () => {
+    const result = loadFromStorage();
+    if (!result) return false;
+    set({
+      ...result.state,
+      events: appendEvents(result.state.events ?? [], [
+        {
+          timestamp: { ...(result.state.time ?? { day: 1, hour: 9, minute: 0 }) },
+          level: "system",
+          icon: "💾",
+          message: result.message,
+        },
+      ]),
+    });
+    return true;
+  },
+
+  deleteSave: () => {
+    deleteStorageSave();
   },
 
   upgradeCpu: () => {

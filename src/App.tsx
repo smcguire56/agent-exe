@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import { AgentPanel } from "./components/AgentPanel";
 import { EventLog } from "./components/EventLog";
@@ -11,8 +11,11 @@ import { Hardware } from "./components/windows/Hardware";
 import { ShellMail } from "./components/windows/ShellMail";
 import { GameOverScreen } from "./components/GameOverScreen";
 import { DevTools } from "./components/DevTools";
+import { BootScreen } from "./components/BootScreen";
 import { useGameStore } from "./store/gameStore";
 import { TICK_MS } from "./systems/gameTick";
+import { useSoundEffects } from "./hooks/useSoundEffects";
+import { playStartup } from "./systems/sound";
 
 const WINDOW_DEFS: Record<
   string,
@@ -69,12 +72,31 @@ function useGameLoop() {
   }, []);
 }
 
-export default function App() {
-  useGameLoop();
+function useScreenShake() {
+  const [shaking, setShaking] = useState(false);
+  const prevHeat = useRef(useGameStore.getState().heat);
+
+  useEffect(() => {
+    const unsub = useGameStore.subscribe((state) => {
+      if (state.heat > prevHeat.current && state.heat >= 60) {
+        setShaking(true);
+        setTimeout(() => setShaking(false), 300);
+      }
+      prevHeat.current = state.heat;
+    });
+    return unsub;
+  }, []);
+
+  return shaking;
+}
+
+function GameDesktop() {
+  useSoundEffects();
   const gameOver = useGameStore((s) => s.gameOver);
+  const shaking = useScreenShake();
 
   return (
-    <div className="crt h-screen w-screen flex flex-col bg-shell-bg text-shell-text overflow-hidden relative">
+    <div className={`crt h-screen w-screen flex flex-col bg-shell-bg text-shell-text overflow-hidden relative${shaking ? " animate-shake" : ""}`}>
       <TopBar />
 
       <div className="flex-1 flex gap-2 p-2 overflow-hidden">
@@ -101,4 +123,15 @@ export default function App() {
       <DevTools />
     </div>
   );
+}
+
+export default function App() {
+  useGameLoop();
+  const [booted, setBooted] = useState(false);
+
+  if (!booted) {
+    return <BootScreen onDone={() => { setBooted(true); playStartup(); }} />;
+  }
+
+  return <GameDesktop />;
 }
