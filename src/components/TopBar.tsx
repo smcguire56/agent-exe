@@ -13,6 +13,9 @@ export function TopBar() {
   const temperature = useGameStore((s) => s.temperature);
   const hardware = useGameStore((s) => s.hardware);
   const agents = useGameStore((s) => s.agents);
+  const toggleWindow = useGameStore((s) => s.toggleWindow);
+  const openWindows = useGameStore((s) => s.openWindows);
+  const unreadMail = useGameStore((s) => s.mails.filter((m) => !m.read).length);
   const [muted, setMutedState] = useState(isMuted());
 
   const cpuCap = maxAgents(hardware);
@@ -69,6 +72,25 @@ export function TopBar() {
         </span>
       </div>
       <div className="flex items-center gap-4">
+        <button
+          onClick={() => toggleWindow("hardware")}
+          className={`text-shell-dim hover:text-shell-text transition-colors${openWindows.includes("hardware") ? " text-shell-cyan" : ""}`}
+          title="Hardware"
+        >
+          🖥️
+        </button>
+        <button
+          onClick={() => toggleWindow("mail")}
+          className="relative text-shell-dim hover:text-shell-text transition-colors"
+          title="Mail"
+        >
+          📬
+          {unreadMail > 0 && !openWindows.includes("mail") && (
+            <span className="absolute -top-1 -right-1 bg-shell-good text-shell-bg rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold font-mono">
+              {unreadMail}
+            </span>
+          )}
+        </button>
         <button
           onClick={toggleMute}
           className="text-shell-dim hover:text-shell-text transition-colors"

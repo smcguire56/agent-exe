@@ -535,7 +535,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
-    const newSuspicion = Math.min(100, Math.max(0, state.suspicion + suspicionDelta));
+    const newSuspicion = Math.round(Math.min(100, Math.max(0, state.suspicion + suspicionDelta)));
     const newMoney = state.money + moneyDelta;
 
     // 6. Star escalation messages (fire when crossing a new star threshold)

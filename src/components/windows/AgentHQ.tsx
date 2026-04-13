@@ -5,7 +5,6 @@ import { traitDescription, effectiveWage } from "../../systems/traitEffects";
 import { getMoodEmoji, getMoodLabel } from "../../systems/moodSystem";
 
 function AgentRow({ agent }: { agent: Agent }) {
-  const assignTask = useGameStore((s) => s.assignTask);
   const statusColor =
     agent.status === "working"
       ? "text-shell-cyan"
@@ -53,17 +52,6 @@ function AgentRow({ agent }: { agent: Agent }) {
           <div className="text-shell-dim italic text-[10px] mt-0.5">
             wage: ${effectiveWage(agent)}/day
           </div>
-        </div>
-        <div className="shrink-0 flex flex-col gap-1">
-          {agent.status === "idle" && (
-            <button
-              onClick={() => assignTask(agent.id)}
-              className="shell-button !text-shell-good"
-              data-testid={`assign-${agent.id}`}
-            >
-              ▶ TASK
-            </button>
-          )}
         </div>
       </div>
     </div>

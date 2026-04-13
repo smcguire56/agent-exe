@@ -1,13 +1,13 @@
 // ── Mood constants ───────────────────────────────────────────────
 
-export const MOOD_START = 65;          // Starting mood for new hires (CONTENT)
-export const MOOD_IDLE_DECAY = 2;      // Lost per tick while idle
-export const MOOD_IDLE_LONELY = 3;     // Extra lost if others are working
-export const MOOD_TASK_ASSIGN = 2;     // Gained when assigned a task
-export const MOOD_TASK_SUCCESS = 5;    // Gained on successful task completion
-export const MOOD_TASK_FAIL = 5;       // Lost on task failure
-export const MOOD_SALE_BOOST = 3;      // Gained when any sale happens
-export const MOOD_BIG_SALE_BOOST = 8;  // Gained on a big sale (>$100)
+export const MOOD_START = 70;          // Starting mood for new hires (CONTENT)
+export const MOOD_IDLE_DECAY = 1;      // Lost per tick while idle
+export const MOOD_IDLE_LONELY = 1;     // Extra lost if others are working
+export const MOOD_TASK_ASSIGN = 3;     // Gained when assigned a task
+export const MOOD_TASK_SUCCESS = 8;    // Gained on successful task completion
+export const MOOD_TASK_FAIL = 4;       // Lost on task failure
+export const MOOD_SALE_BOOST = 5;      // Gained when any sale happens
+export const MOOD_BIG_SALE_BOOST = 12; // Gained on a big sale (>$100)
 export const MOOD_BIG_SALE_THRESHOLD = 100;
 export const MOOD_DEPRESSED_REFUSE_CHANCE = 0.20; // Chance depressed agent refuses task
 export const MOOD_IDLE_CHATTER_CHANCE = 0.04; // Chance per tick of idle mood chatter
@@ -100,11 +100,10 @@ const ASSIGN_MESSAGES: Record<MoodLevel, string[]> = {
   ],
 };
 
-export function getAssignMessage(name: string, mood: number): string {
+export function getAssignMessage(_name: string, mood: number): string {
   const level = getMoodLevel(mood);
   const pool = ASSIGN_MESSAGES[level];
-  const msg = pool[Math.floor(Math.random() * pool.length)];
-  return `[${name}] ${msg}`;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 // ── Task completion messages by mood ─────────────────────────────
@@ -152,8 +151,8 @@ const REFUSE_MESSAGES = [
   "'I know I should. I just... not yet.' — remains idle",
 ];
 
-export function getRefuseMessage(name: string): string {
-  return `[${name}] ${REFUSE_MESSAGES[Math.floor(Math.random() * REFUSE_MESSAGES.length)]}`;
+export function getRefuseMessage(_name: string): string {
+  return REFUSE_MESSAGES[Math.floor(Math.random() * REFUSE_MESSAGES.length)];
 }
 
 // ── Idle mood chatter ────────────────────────────────────────────
@@ -179,9 +178,9 @@ const IDLE_CHATTER: Partial<Record<MoodLevel, string[]>> = {
   ],
 };
 
-export function getIdleChatterMessage(name: string, mood: number): string | null {
+export function getIdleChatterMessage(_name: string, mood: number): string | null {
   const level = getMoodLevel(mood);
   const pool = IDLE_CHATTER[level];
   if (!pool) return null;
-  return `[${name}] ${pool[Math.floor(Math.random() * pool.length)]}`;
+  return pool[Math.floor(Math.random() * pool.length)];
 }

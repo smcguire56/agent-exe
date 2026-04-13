@@ -4,8 +4,6 @@ import { useGameStore } from "../store/gameStore";
 const APPS: { id: string; label: string; icon: string }[] = [
   { id: "agentHQ", label: "AgentHQ", icon: "🤖" },
   { id: "market", label: "Market", icon: "🛒" },
-  { id: "mail", label: "Mail", icon: "📬" },
-  { id: "hardware", label: "Hardware", icon: "🖥️" },
   { id: "apartment", label: "Apartment", icon: "🛋️" },
 ];
 

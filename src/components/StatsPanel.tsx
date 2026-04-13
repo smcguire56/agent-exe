@@ -96,7 +96,6 @@ export function StatsPanel() {
           </div>
         </div>
 
-        <button className="shell-button w-full mt-4">⬆ UPGRADE</button>
       </div>
     </div>
   );
