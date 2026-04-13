@@ -55,11 +55,11 @@ export const COOLING_TIERS: CoolingTier[] = [
 interface StorageTier { maxItems: number; cost: number; flavor: string }
 
 export const STORAGE_TIERS: StorageTier[] = [
-  { maxItems: 20,  cost: 0,      flavor: "20 item limit. You live in an apartment." },
-  { maxItems: 50,  cost: 400,    flavor: "Added a shelf. Revolutionary." },
-  { maxItems: 100, cost: 1200,   flavor: "Second shelf. Engineering at its finest." },
-  { maxItems: 250, cost: 3500,   flavor: "Cargo bay extension. Things are getting serious." },
-  { maxItems: 500, cost: 10000,  flavor: "The warehouse. You can hear echoes in here." },
+  { maxItems: 5,  cost: 0,      flavor: "5 item limit. You live in an apartment." },
+  { maxItems: 10,  cost: 400,    flavor: "Added a shelf. Revolutionary." },
+  { maxItems: 20, cost: 1200,   flavor: "Second shelf. Engineering at its finest." },
+  { maxItems: 50, cost: 3500,   flavor: "Cargo bay extension. Things are getting serious." },
+  { maxItems: 100, cost: 10000,  flavor: "The warehouse. You can hear echoes in here." },
 ];
 
 export function getStorageMax(level: number): number {
