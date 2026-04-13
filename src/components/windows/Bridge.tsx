@@ -5,8 +5,6 @@ import { getTempZone, getTempClasses } from "../../systems/temperatureSystem";
 import { CrewmateSprite } from "../CrewmateSprite";
 import type { Agent } from "../../types";
 
-type AlarmLevel = "none" | "thermal" | "critical";
-
 // ── Chatter ──────────────────────────────────────────────────────
 
 const CHATTER: Record<Agent["status"], string[]> = {
