@@ -17,7 +17,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📦",
     message:
       "A customer left a 1-star review: 'This candle smells like my uncle's regret. 10/10 would not recommend.'",
-    effect: { suspicion: 2 },
   },
   {
     id: "totally_legit",
@@ -40,7 +39,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🔥",
     message:
       "A package was returned labeled 'CURSED.' Customer provided no further explanation.",
-    effect: { suspicion: 4 },
   },
   {
     id: "viral_tiktok",
@@ -48,7 +46,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📈",
     message:
       "A TikTok mocking your store went viral. Ironically, sales are up. A tip jar appeared on your desk.",
-    effect: { money: 75, suspicion: 3 },
+    effect: { money: 75 },
   },
   {
     id: "found_twenty",
@@ -64,7 +62,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "👁️",
     message:
       "A new thread on r/scams mentions your store by name. Top comment: 'I think I know this guy IRL.'",
-    effect: { suspicion: 6 },
   },
   {
     id: "neighbor_knocks",
@@ -72,7 +69,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🚪",
     message:
       "Your neighbor knocked to ask 'what the humming is.' You said 'raccoons.' They did not look convinced.",
-    effect: { suspicion: 2 },
   },
   {
     id: "bryan_nap",
@@ -134,7 +130,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🧑‍⚖️",
     message:
       "A man in a polo shirt walked past your door twice. He was writing things down.",
-    effect: { suspicion: 5 },
   },
   {
     id: "review_5star",
@@ -150,7 +145,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📱",
     message:
       "Your landlord texted: 'hey are u running a warehouse in there.' You have not replied.",
-    effect: { suspicion: 4 },
   },
   {
     id: "ram_dream",
@@ -173,7 +167,6 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📸",
     message:
       "A customer posted an unboxing video. Your return address is clearly visible in frame.",
-    effect: { suspicion: 7 },
   },
 ];
 

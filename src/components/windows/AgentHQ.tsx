@@ -3,8 +3,9 @@ import { useGameStore, maxAgents, HIRE_COST } from "../../store/gameStore";
 import type { Agent } from "../../types";
 import { traitDescription, effectiveWage } from "../../systems/traitEffects";
 import { getMoodEmoji, getMoodLabel } from "../../systems/moodSystem";
+import { ConfirmDialog } from "../ConfirmDialog";
 
-function AgentRow({ agent }: { agent: Agent }) {
+function AgentRow({ agent, onFire }: { agent: Agent; onFire: (agent: Agent) => void }) {
   const statusColor =
     agent.status === "working"
       ? "text-shell-cyan"
@@ -53,6 +54,14 @@ function AgentRow({ agent }: { agent: Agent }) {
             wage: ${effectiveWage(agent)}/day
           </div>
         </div>
+        <button
+          onClick={() => onFire(agent)}
+          className="shell-button shrink-0 !text-shell-danger !text-[10px] !px-2"
+          data-testid={`fire-${agent.id}`}
+          title={`Fire ${agent.name}`}
+        >
+          ✕ FIRE
+        </button>
       </div>
     </div>
   );
@@ -116,11 +125,13 @@ function CandidateRow({ agent }: { agent: Agent }) {
 
 export function AgentHQ() {
   const [tab, setTab] = useState<"roster" | "hire">("roster");
+  const [fireTarget, setFireTarget] = useState<Agent | null>(null);
   const agents = useGameStore((s) => s.agents);
   const hardware = useGameStore((s) => s.hardware);
   const hireCandidates = useGameStore((s) => s.hireCandidates);
   const hireCandidatesDay = useGameStore((s) => s.hireCandidatesDay);
   const refreshCandidates = useGameStore((s) => s.refreshCandidates);
+  const fireAgent = useGameStore((s) => s.fireAgent);
   const cap = maxAgents(hardware);
 
   return (
@@ -163,7 +174,7 @@ export function AgentHQ() {
                 // No agents. You are truly alone.
               </div>
             ) : (
-              agents.map((a) => <AgentRow key={a.id} agent={a} />)
+              agents.map((a) => <AgentRow key={a.id} agent={a} onFire={setFireTarget} />)
             )}
           </>
         )}
@@ -209,6 +220,20 @@ export function AgentHQ() {
         </span>
         <span>AGENT.HQ v0.2</span>
       </div>
+
+      <ConfirmDialog
+        open={fireTarget !== null}
+        title="TERMINATE AGENT"
+        message={fireTarget ? `Fire ${fireTarget.name}? Their process will be killed and any in-progress task will be lost.` : ""}
+        confirmLabel="✕ FIRE"
+        cancelLabel="KEEP"
+        variant="danger"
+        onConfirm={() => {
+          if (fireTarget) fireAgent(fireTarget.id);
+          setFireTarget(null);
+        }}
+        onCancel={() => setFireTarget(null)}
+      />
     </>
   );
 }

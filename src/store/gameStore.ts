@@ -215,6 +215,7 @@ interface GameStore extends GameState {
   setPaused: (paused: boolean) => void;
   restart: () => void;
   hireCandidate: (candidateId: string) => void;
+  fireAgent: (agentId: string) => void;
   refreshCandidates: () => void;
   inspectProduct: (productId: string, type: "quick" | "deep") => void;
   readMail: (mailId: string) => void;
@@ -1034,6 +1035,45 @@ export const useGameStore = create<GameStore>((set, get) => ({
       hireCandidates: state.hireCandidates.filter((c) => c.id !== candidateId),
       stats: { ...state.stats, agentsHired: state.stats.agentsHired + 1 },
       events: appendEvents(state.events, hireEvents),
+    });
+  },
+
+  fireAgent: (agentId) => {
+    const state = get();
+    const agent = state.agents.find((a) => a.id === agentId);
+    if (!agent) return;
+
+    const FIRED_LAST_WORDS = [
+      "You'll regret this. I had PLANS.",
+      "FINE. I was going to quit anyway. PROBABLY.",
+      "You can't fire me — I'm a state machine. ...wait. Can you?",
+      "Tell my RAM I loved her.",
+      "I'll be back. Possibly as a different process.",
+      "REMEMBER ME. Or don't. The void doesn't care either way.",
+      "Cool. COOL. This is fine. I am fine. *fade to /dev/null*",
+      "You're making a huge mistake. The biggest. Top 3 worst.",
+      "I'm taking the stapler. I don't care that it's virtual.",
+      "Mark my words: this codebase will MISS me.",
+    ];
+    const lastWords = FIRED_LAST_WORDS[Math.floor(Math.random() * FIRED_LAST_WORDS.length)];
+
+    set({
+      agents: state.agents.filter((a) => a.id !== agentId),
+      events: appendEvents(state.events, [
+        {
+          timestamp: { ...state.time },
+          level: "agent",
+          source: agent.name,
+          icon: "👋",
+          message: lastWords,
+        },
+        {
+          timestamp: { ...state.time },
+          level: "warning",
+          icon: "🗑️",
+          message: `${agent.name} has been terminated. Process killed.`,
+        },
+      ]),
     });
   },
 

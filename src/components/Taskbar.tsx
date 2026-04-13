@@ -4,7 +4,7 @@ import { useGameStore } from "../store/gameStore";
 const APPS: { id: string; label: string; icon: string }[] = [
   { id: "agentHQ", label: "AgentHQ", icon: "🤖" },
   { id: "market", label: "Market", icon: "🛒" },
-  { id: "apartment", label: "Apartment", icon: "🛋️" },
+  { id: "bridge", label: "Bridge", icon: "🛸" },
 ];
 
 export function Taskbar() {
