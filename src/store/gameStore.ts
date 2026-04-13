@@ -35,7 +35,7 @@ import {
   MOOD_SALE_BOOST,
   MOOD_BIG_SALE_BOOST,
   MOOD_BIG_SALE_THRESHOLD,
-  MOOD_DEPRESSED_REFUSE_CHANCE,
+  getRefuseChance,
   MOOD_IDLE_CHATTER_CHANCE,
   getAssignMessage,
   getRefuseMessage,
@@ -772,8 +772,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ticksRemaining: ticks,
     };
 
-    // Depressed agents may refuse tasks
-    if (agent.mood < 20 && Math.random() < MOOD_DEPRESSED_REFUSE_CHANCE) {
+    // Low-mood agents may refuse tasks (chance scales with mood)
+    if (Math.random() < getRefuseChance(agent.mood)) {
       set({
         events: appendEvents(state.events, [{
           timestamp: { ...state.time },
@@ -828,8 +828,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const eventsBatch: Omit<EventLog, "id">[] = [];
     const updatedAgents = state.agents.map((a) => {
       if (a.status !== "idle") return a;
-      // Depressed agents may refuse even the bulk assign
-      if (a.mood < 20 && Math.random() < MOOD_DEPRESSED_REFUSE_CHANCE) {
+      // Low-mood agents may refuse even the bulk assign
+      if (Math.random() < getRefuseChance(a.mood)) {
         eventsBatch.push({
           timestamp: { ...state.time },
           level: "warning",

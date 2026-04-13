@@ -9,7 +9,15 @@ export const MOOD_TASK_FAIL = 4;       // Lost on task failure
 export const MOOD_SALE_BOOST = 5;      // Gained when any sale happens
 export const MOOD_BIG_SALE_BOOST = 12; // Gained on a big sale (>$100)
 export const MOOD_BIG_SALE_THRESHOLD = 100;
-export const MOOD_DEPRESSED_REFUSE_CHANCE = 0.20; // Chance depressed agent refuses task
+export const MOOD_DEPRESSED_REFUSE_CHANCE = 0.20; // Legacy — kept for compatibility
+
+// Tiered refusal chance: agents with low mood push back on tasks more often.
+export function getRefuseChance(mood: number): number {
+  if (mood >= 40) return 0;
+  if (mood >= 25) return 0.20;
+  if (mood >= 10) return 0.45;
+  return 0.70;
+}
 export const MOOD_IDLE_CHATTER_CHANCE = 0.04; // Chance per tick of idle mood chatter
 
 // ── Mood levels ──────────────────────────────────────────────────

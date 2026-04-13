@@ -75,6 +75,47 @@ export default {
           "60%": { transform: "translateX(-1px)" },
           "80%": { transform: "translateX(1px)" },
         },
+        "crew-work": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-3px)" },
+        },
+        "crew-breath": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.04)" },
+        },
+        "crew-glitch": {
+          "0%, 100%": { transform: "translate(0, 0)" },
+          "25%": { transform: "translate(-1px, 1px)" },
+          "50%": { transform: "translate(1px, -1px)" },
+          "75%": { transform: "translate(-1px, 0)" },
+        },
+        "crew-rogue": {
+          "0%, 100%": { transform: "rotate(-2deg)" },
+          "50%": { transform: "rotate(2deg)" },
+        },
+        "crew-wander": {
+          "0%, 100%": { transform: "translateX(-22px)" },
+          "25%": { transform: "translateX(10px)" },
+          "50%": { transform: "translateX(26px)" },
+          "75%": { transform: "translateX(-4px)" },
+        },
+        "crew-look": {
+          "0%, 100%": { transform: "translateX(0)" },
+          "50%": { transform: "translateX(2px)" },
+        },
+        "smoke-rise": {
+          "0%": { transform: "translateY(0) scale(0.8)", opacity: "0.5" },
+          "100%": { transform: "translateY(-60px) scale(1.6)", opacity: "0" },
+        },
+        "alert-flash": {
+          "0%, 100%": { opacity: "0.15" },
+          "50%": { opacity: "0.45" },
+        },
+        "bubble-pop": {
+          "0%": { transform: "scale(0.7)", opacity: "0" },
+          "60%": { transform: "scale(1.05)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
       },
       animation: {
         blink: "blink 1s steps(1) infinite",
@@ -86,6 +127,15 @@ export default {
         "suspicion-pulse": "suspicion-pulse 1s ease-in-out infinite",
         "meltdown-flash": "meltdown-flash 0.4s ease-in-out infinite",
         shake: "shake 0.3s ease-in-out",
+        "crew-work": "crew-work 0.45s ease-in-out infinite",
+        "crew-breath": "crew-breath 3s ease-in-out infinite",
+        "crew-glitch": "crew-glitch 0.12s steps(4) infinite",
+        "crew-rogue": "crew-rogue 1.8s ease-in-out infinite",
+        "crew-wander": "crew-wander 14s ease-in-out infinite",
+        "crew-look": "crew-look 5s ease-in-out infinite",
+        "smoke-rise": "smoke-rise 3s ease-out infinite",
+        "alert-flash": "alert-flash 1.2s ease-in-out infinite",
+        "bubble-pop": "bubble-pop 0.25s ease-out",
       },
     },
   },

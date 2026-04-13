@@ -26,7 +26,7 @@ const WINDOW_DEFS: Record<
   market: { title: "MARKET.EXE — Source & List", icon: "🛒", component: Market, width: 650, defaultPos: { x: 100, y: 40 } },
   hardware: { title: "HARDWARE.SHOP — Upgrades", icon: "🖥️", component: Hardware, width: 500, defaultPos: { x: 140, y: 60 } },
   mail: { title: "SHELL.MAIL — Inbox", icon: "📬", component: ShellMail, width: 600, height: 420, defaultPos: { x: 120, y: 50 } },
-  bridge: { title: "THE BRIDGE — Command Ship", icon: "🛸", component: Bridge, width: 700, height: 500, defaultPos: { x: 80, y: 30 } },
+  bridge: { title: "THE BRIDGE — Command Ship", icon: "🛸", component: Bridge, width: 900, height: 540, defaultPos: { x: 60, y: 20 } },
 };
 
 function OpenWindows() {
