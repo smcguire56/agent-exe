@@ -55,16 +55,8 @@ const BIO_FRAGMENTS: Record<PersonalityTrait, string[]> = {
   ],
 };
 
-const MOOD_POOL = [
-  "ready to disappoint",
-  "cautiously optimistic",
-  "mildly suspicious",
-  "aggressively chill",
-  "legally distinct from happy",
-  "pondering the void",
-  "overclocked",
-  "brewing coffee internally",
-];
+// Starting mood values — slightly randomised around CONTENT (60-79)
+const MOOD_POOL = [60, 63, 65, 67, 70, 72, 75];
 
 import { randomFrom } from "../systems/gameTick";
 
@@ -83,6 +75,6 @@ export function generateBio(name: string, traits: PersonalityTrait[]): string {
   return `${name} (${traits.join(", ")}): ${parts.join(" ")}`;
 }
 
-export function randomMood(): string {
+export function randomMood(): number {
   return randomFrom(MOOD_POOL);
 }

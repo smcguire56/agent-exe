@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { TopBar } from "./components/TopBar";
 import { AgentPanel } from "./components/AgentPanel";
 import { EventLog } from "./components/EventLog";
@@ -74,15 +74,15 @@ function useGameLoop() {
 
 function useScreenShake() {
   const [shaking, setShaking] = useState(false);
-  const prevHeat = useRef(useGameStore.getState().heat);
+  const prevSuspicion = useRef(useGameStore.getState().suspicion);
 
   useEffect(() => {
     const unsub = useGameStore.subscribe((state) => {
-      if (state.heat > prevHeat.current && state.heat >= 60) {
+      if (state.suspicion > prevSuspicion.current && state.suspicion >= 60) {
         setShaking(true);
         setTimeout(() => setShaking(false), 300);
       }
-      prevHeat.current = state.heat;
+      prevSuspicion.current = state.suspicion;
     });
     return unsub;
   }, []);
@@ -90,10 +90,31 @@ function useScreenShake() {
   return shaking;
 }
 
+function useMeltdownFreeze() {
+  const [frozen, setFrozen] = useState(false);
+  const clearMeltdown = useGameStore((s) => s.clearMeltdown);
+
+  useEffect(() => {
+    const unsub = useGameStore.subscribe((state, prev) => {
+      if (state.meltdownActive && !prev.meltdownActive) {
+        setFrozen(true);
+        setTimeout(() => {
+          setFrozen(false);
+          clearMeltdown();
+        }, 4000);
+      }
+    });
+    return unsub;
+  }, [clearMeltdown]);
+
+  return frozen;
+}
+
 function GameDesktop() {
   useSoundEffects();
   const gameOver = useGameStore((s) => s.gameOver);
   const shaking = useScreenShake();
+  const frozen = useMeltdownFreeze();
 
   return (
     <div className={`crt h-screen w-screen flex flex-col bg-shell-bg text-shell-text overflow-hidden relative${shaking ? " animate-shake" : ""}`}>
@@ -120,6 +141,14 @@ function GameDesktop() {
       <Taskbar />
 
       {gameOver && <GameOverScreen />}
+      {frozen && (
+        <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center font-mono select-none">
+          <div className="text-shell-danger text-3xl animate-blink mb-6">💀 SYSTEM CRASH</div>
+          <div className="text-shell-warn text-sm mb-2">Emergency shutdown triggered.</div>
+          <div className="text-shell-dim text-xs mb-1">SHELLOS: Rebooting... please don't do that again.</div>
+          <div className="text-shell-dim text-xs animate-blink mt-4">[ ShellOS Recovery Mode ]</div>
+        </div>
+      )}
       <DevTools />
     </div>
   );

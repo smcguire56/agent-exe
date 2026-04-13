@@ -5,7 +5,9 @@ export interface EventTemplate {
   level: EventLevel;
   icon: string;
   message: string;
-  effect?: { money?: number; heat?: number };
+  effect?: { money?: number; suspicion?: number };
+  /** If set, at least one agent with this name must be hired for the event to fire */
+  requiresAgent?: string;
 }
 
 export const RANDOM_EVENTS: EventTemplate[] = [
@@ -15,7 +17,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📦",
     message:
       "A customer left a 1-star review: 'This candle smells like my uncle's regret. 10/10 would not recommend.'",
-    effect: { heat: 2 },
+    effect: { suspicion: 2 },
   },
   {
     id: "totally_legit",
@@ -30,6 +32,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "⚠️",
     message:
       "Bryan has changed his display name to 'The Bryan'. No one approved this.",
+    requiresAgent: "Bryan",
   },
   {
     id: "cursed_package",
@@ -37,7 +40,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🔥",
     message:
       "A package was returned labeled 'CURSED.' Customer provided no further explanation.",
-    effect: { heat: 4 },
+    effect: { suspicion: 4 },
   },
   {
     id: "viral_tiktok",
@@ -45,7 +48,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📈",
     message:
       "A TikTok mocking your store went viral. Ironically, sales are up. A tip jar appeared on your desk.",
-    effect: { money: 75, heat: 3 },
+    effect: { money: 75, suspicion: 3 },
   },
   {
     id: "found_twenty",
@@ -61,7 +64,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "👁️",
     message:
       "A new thread on r/scams mentions your store by name. Top comment: 'I think I know this guy IRL.'",
-    effect: { heat: 6 },
+    effect: { suspicion: 6 },
   },
   {
     id: "neighbor_knocks",
@@ -69,7 +72,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🚪",
     message:
       "Your neighbor knocked to ask 'what the humming is.' You said 'raccoons.' They did not look convinced.",
-    effect: { heat: 2 },
+    effect: { suspicion: 2 },
   },
   {
     id: "bryan_nap",
@@ -77,6 +80,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "😴",
     message:
       "Bryan is napping inside a cardboard box. He filed it as 'field research.'",
+    requiresAgent: "Bryan",
   },
   {
     id: "pam_crypto",
@@ -85,6 +89,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     message:
       "Pam invested the petty cash into a coin called $SHREK. You cannot find any mention of it online.",
     effect: { money: -15 },
+    requiresAgent: "Pam",
   },
   {
     id: "mystery_box",
@@ -114,6 +119,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🎤",
     message:
       "Pam is doing karaoke at her desk. She has not been assigned a task in nine minutes.",
+    requiresAgent: "Pam",
   },
   {
     id: "bsod_fake",
@@ -128,7 +134,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "🧑‍⚖️",
     message:
       "A man in a polo shirt walked past your door twice. He was writing things down.",
-    effect: { heat: 5 },
+    effect: { suspicion: 5 },
   },
   {
     id: "review_5star",
@@ -144,7 +150,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📱",
     message:
       "Your landlord texted: 'hey are u running a warehouse in there.' You have not replied.",
-    effect: { heat: 4 },
+    effect: { suspicion: 4 },
   },
   {
     id: "ram_dream",
@@ -159,6 +165,7 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📖",
     message:
       "Bryan is reading a motivational book titled 'Pivot: A Verb, A Lifestyle, A Lawsuit Risk.'",
+    requiresAgent: "Bryan",
   },
   {
     id: "customer_photo",
@@ -166,55 +173,55 @@ export const RANDOM_EVENTS: EventTemplate[] = [
     icon: "📸",
     message:
       "A customer posted an unboxing video. Your return address is clearly visible in frame.",
-    effect: { heat: 7 },
+    effect: { suspicion: 7 },
   },
 ];
 
-export const HIGH_HEAT_WARNINGS: EventTemplate[] = [
+export const HIGH_SUSPICION_WARNINGS: EventTemplate[] = [
   {
-    id: "heat_subpoena",
+    id: "suspicion_subpoena",
     level: "danger",
     icon: "🚨",
     message:
       "An envelope slides under the door. It just says 'WE KNOW.' Pam thinks it's a prank. Pam is wrong.",
   },
   {
-    id: "heat_helicopter",
+    id: "suspicion_helicopter",
     level: "danger",
     icon: "🚁",
     message:
       "There is a helicopter. You do not know whose helicopter. You suspect it knows whose.",
   },
   {
-    id: "heat_investigation",
+    id: "suspicion_investigation",
     level: "danger",
     icon: "🔍",
     message:
       "Someone on a forum is building a spreadsheet of your listings. They have a tab labeled 'patterns.'",
   },
   {
-    id: "heat_van",
+    id: "suspicion_van",
     level: "danger",
     icon: "🚐",
     message:
       "An unmarked van has been parked across the street for four hours. Bryan waved at it. It waved back.",
   },
   {
-    id: "heat_bryan_panic",
+    id: "suspicion_bryan_panic",
     level: "danger",
     icon: "😰",
     message:
       "Bryan just asked if he's 'legally allowed to cry at work.' You don't know how to answer.",
   },
   {
-    id: "heat_news",
+    id: "suspicion_news",
     level: "danger",
     icon: "📺",
     message:
       "Local news ran a segment on 'sketchy online storefronts.' Your logo was blurred but not enough.",
   },
   {
-    id: "heat_shadow",
+    id: "suspicion_shadow",
     level: "danger",
     icon: "👤",
     message:
@@ -224,7 +231,7 @@ export const HIGH_HEAT_WARNINGS: EventTemplate[] = [
 
 export const GAME_OVER_MESSAGES: string[] = [
   "The feds kicked the door in. Bryan offered them LaCroix. Pam tried to sell them a knockoff watch. The raid was, by all accounts, extremely awkward.",
-  "The heat hit 100. The apartment is now a crime scene podcast. Pam is already being interviewed for it.",
+  "Suspicion hit 100. The apartment is now a crime scene podcast. Pam is already being interviewed for it.",
   "A subreddit crowdfunded a lawyer. The lawyer crowdfunded a documentary. You are the documentary.",
   "Three men in windbreakers that say 'NOT FBI' have arrived. They have questions about 'the candles.'",
   "Bryan has turned state's witness in exchange for immunity and one (1) bean bag chair. You can't even be mad.",
@@ -234,7 +241,16 @@ export const GAME_OVER_MESSAGES: string[] = [
 
 export const SYSTEM_QUIPS: string[] = [
   "SHELLOS: Update available. Installing... just kidding. We don't do that here.",
-  "SYSTEM: CPU temperature rising. Consider upgrading cooling or having fewer ambitions.",
+  "SYSTEM: CPU fan spinning up. Probably fine. Definitely fine.",
   "SYSTEM: Storage at 80%. Your apartment is starting to look like a conspiracy theorist's office.",
-  "WARNING: Heat level increasing. Someone on Reddit is asking questions about your business.",
+  "⭐ Someone is asking questions about your business...",
 ];
+
+/** Escalation messages fired when suspicion crosses a new star threshold */
+export const SUSPICION_ESCALATION_MESSAGES: Record<number, string> = {
+  1: "SYSTEM: Minor attention detected. A Reddit thread. Probably nothing.",
+  2: "SYSTEM: A consumer watchdog blog just posted about a store matching your description.",
+  3: "SYSTEM: Official inquiry received. ShellMail has the details. Stay calm.",
+  4: "SYSTEM: Active monitoring detected on your network. They're watching.",
+  5: "SYSTEM: ██████ INCOMING ██████ — You had a good run.",
+};

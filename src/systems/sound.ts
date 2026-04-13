@@ -78,7 +78,7 @@ export function playError(): void {
   });
 }
 
-/** Alert chime — high heat warning */
+/** Alert chime — high suspicion warning */
 export function playAlert(): void {
   play((ac) => {
     const t = ac.currentTime;

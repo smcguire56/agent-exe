@@ -4,7 +4,7 @@ import { getGameOverMessage } from "../systems/eventSystem";
 
 export function DevTools() {
   const [open, setOpen] = useState(false);
-  const heat = useGameStore((s) => s.heat);
+  const suspicion = useGameStore((s) => s.suspicion);
   const money = useGameStore((s) => s.money);
   const paused = useGameStore((s) => s.paused);
   const time = useGameStore((s) => s.time);
@@ -36,7 +36,7 @@ export function DevTools() {
 
   const triggerGameOver = () => {
     devSet({
-      heat: 100,
+      suspicion: 100,
       gameOver: true,
       gameOverReason: getGameOverMessage(),
     });
@@ -50,15 +50,15 @@ export function DevTools() {
     devSet({ money: Math.max(0, money + amount) });
   };
 
-  const setHeat = (h: number) => {
-    devSet({ heat: Math.min(100, Math.max(0, h)) });
+  const setSuspicion = (h: number) => {
+    devSet({ suspicion: Math.min(100, Math.max(0, h)) });
   };
 
   const skipTicks = (n: number) => {
     for (let i = 0; i < n; i++) tick();
   };
 
-  const resetHeat = () => devSet({ heat: 0 });
+  const resetSuspicion = () => devSet({ suspicion: 0 });
 
   const fireTestEvent = () => {
     pushEvent({
@@ -96,17 +96,17 @@ export function DevTools() {
             <span className="text-shell-good">${money}</span>
           </div>
           <div className="flex justify-between">
-            <span>heat</span>
+            <span>suspicion</span>
             <span
               className={
-                heat >= 80
+                suspicion >= 85
                   ? "text-shell-danger"
-                  : heat >= 50
+                  : suspicion >= 40
                     ? "text-shell-warn"
                     : "text-shell-text"
               }
             >
-              {heat}
+              {suspicion}
             </span>
           </div>
           <div className="flex justify-between">
@@ -117,33 +117,19 @@ export function DevTools() {
           </div>
         </div>
 
-        {/* Heat */}
+        {/* Suspicion */}
         <div>
-          <div className="text-shell-cyan uppercase mb-1">Heat</div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={heat}
-            onChange={(e) => setHeat(parseInt(e.target.value, 10))}
-            className="w-full accent-shell-danger"
-          />
-          <div className="flex gap-1 mt-1">
-            <button className="shell-button flex-1" onClick={() => setHeat(0)}>
-              0
-            </button>
-            <button className="shell-button flex-1" onClick={() => setHeat(50)}>
-              50
-            </button>
-            <button className="shell-button flex-1" onClick={() => setHeat(85)}>
-              85
-            </button>
-            <button
-              className="shell-button flex-1 !text-shell-danger"
-              onClick={() => setHeat(99)}
-            >
-              99
-            </button>
+          <div className="text-shell-cyan uppercase mb-1">Suspicion</div>
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={suspicion}
+              onChange={(e) => setSuspicion(parseInt(e.target.value, 10))}
+              className="flex-1 accent-shell-danger"
+            />
+            <span className="text-shell-dim w-6 text-right">{suspicion}</span>
           </div>
         </div>
 
@@ -215,8 +201,8 @@ export function DevTools() {
             <button className="shell-button" onClick={fireTestEvent}>
               📣 EVENT
             </button>
-            <button className="shell-button" onClick={resetHeat}>
-              ❄ COOL
+            <button className="shell-button" onClick={resetSuspicion}>
+              ❄ CLEAR ⭐
             </button>
             <button
               className="shell-button !text-shell-danger col-span-2"

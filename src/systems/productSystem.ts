@@ -3,7 +3,7 @@ import { COMPLAINT_MESSAGES, SALE_MESSAGES } from "../data/messages";
 import { randomFrom } from "./gameTick";
 
 const BASE_COMPLAINT_CHANCE = 0.15;
-const COMPLAINT_HEAT = 5;
+const COMPLAINT_SUSPICION = 5;
 
 const BLIND_COMPLAINT_MESSAGES = [
   "📦 Customer reports: 'This phone case arrived warm for no reason. I'm scared.'",
@@ -17,7 +17,7 @@ export interface ProductTickResult {
   product: Product | null; // null if it sold and should be removed
   eventsToAdd: Omit<EventLog, "id">[];
   moneyDelta: number;
-  heatDelta: number;
+  suspicionDelta: number;
 }
 
 /** Quality multiplier applied to sell price */
@@ -57,7 +57,7 @@ export function processProduct(
     product,
     eventsToAdd: [],
     moneyDelta: 0,
-    heatDelta: 0,
+    suspicionDelta: 0,
   };
 
   // Process inspection countdown
@@ -122,11 +122,11 @@ export function processProduct(
   });
 
   // Complaint roll (Paranoid agents reduce complaints via complaintMult)
-  // Grey products (tier 2) generate 2x heat on complaints
-  const heatMult = product.tier >= 2 ? 2 : 1;
+  // Grey products (tier 2) generate 2x suspicion on complaints
+  const suspicionMult = product.tier >= 2 ? 2 : 1;
   const cc = complaintChance(product) * complaintMult;
   if (Math.random() < cc) {
-    result.heatDelta = COMPLAINT_HEAT * heatMult;
+    result.suspicionDelta = COMPLAINT_SUSPICION * suspicionMult;
 
     if (!product.inspected && product.quality === "bad") {
       // Blind sale of bad item — special message

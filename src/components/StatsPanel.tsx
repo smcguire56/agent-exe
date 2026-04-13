@@ -1,4 +1,5 @@
 import { useGameStore } from "../store/gameStore";
+import { MAX_HW_LEVEL, getStorageMax } from "../data/hardwareConfig";
 
 interface MeterProps {
   label: string;
@@ -30,8 +31,9 @@ function Meter({ label, value, max, color }: MeterProps) {
 
 export function StatsPanel() {
   const hardware = useGameStore((s) => s.hardware);
-  const heat = useGameStore((s) => s.heat);
+  const suspicion = useGameStore((s) => s.suspicion);
   const products = useGameStore((s) => s.products);
+  const storageMax = getStorageMax(hardware.storage);
 
   return (
     <div className="shell-panel flex flex-col h-full overflow-hidden">
@@ -43,25 +45,25 @@ export function StatsPanel() {
         <Meter
           label="CPU"
           value={hardware.cpu}
-          max={10}
+          max={MAX_HW_LEVEL}
           color="text-shell-good"
         />
         <Meter
           label="RAM"
           value={hardware.ram}
-          max={10}
+          max={MAX_HW_LEVEL}
           color="text-shell-cyan"
         />
         <Meter
           label="Cooling"
           value={hardware.cooling}
-          max={10}
+          max={MAX_HW_LEVEL}
           color="text-shell-cyan"
         />
         <Meter
           label="Storage"
           value={hardware.storage}
-          max={10}
+          max={MAX_HW_LEVEL}
           color="text-shell-warn"
         />
 
@@ -69,13 +71,13 @@ export function StatsPanel() {
           Operations
         </div>
         <Meter
-          label="Heat"
-          value={heat}
+          label="Suspicion"
+          value={suspicion}
           max={100}
           color={
-            heat >= 80
+            suspicion >= 85
               ? "text-shell-danger"
-              : heat >= 50
+              : suspicion >= 40
                 ? "text-shell-warn"
                 : "text-shell-good"
           }
@@ -85,7 +87,7 @@ export function StatsPanel() {
           <div className="flex justify-between">
             <span>📦 Inventory</span>
             <span className="text-shell-text" data-testid="inventory-count">
-              {products.length}
+              {products.length}/{storageMax}
             </span>
           </div>
           <div className="flex justify-between">

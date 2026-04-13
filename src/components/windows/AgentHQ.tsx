@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useGameStore, maxAgents, HIRE_COST } from "../../store/gameStore";
 import type { Agent } from "../../types";
 import { traitDescription, effectiveWage } from "../../systems/traitEffects";
+import { getMoodEmoji, getMoodLabel } from "../../systems/moodSystem";
 
 function AgentRow({ agent }: { agent: Agent }) {
   const assignTask = useGameStore((s) => s.assignTask);
@@ -39,8 +40,18 @@ function AgentRow({ agent }: { agent: Agent }) {
               ))}
             </div>
           )}
+          <div className="mt-0.5">
+            <div className="text-shell-dim text-[10px] mb-0.5 flex justify-between">
+              <span>Mood: {getMoodEmoji(agent.mood)} {getMoodLabel(agent.mood)}</span>
+              <span className="text-shell-dim">{agent.mood}%</span>
+            </div>
+            <div className="text-shell-good text-[10px] leading-none tracking-tighter">
+              {"█".repeat(Math.round(agent.mood / 10))}
+              <span className="text-shell-border">{"░".repeat(10 - Math.round(agent.mood / 10))}</span>
+            </div>
+          </div>
           <div className="text-shell-dim italic text-[10px] mt-0.5">
-            mood: {agent.mood} · wage: ${effectiveWage(agent)}/day
+            wage: ${effectiveWage(agent)}/day
           </div>
         </div>
         <div className="shrink-0 flex flex-col gap-1">

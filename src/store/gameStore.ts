@@ -22,21 +22,63 @@ import { processAgent } from "../systems/agentSystem";
 import { processProduct } from "../systems/productSystem";
 import {
   rollRandomEvent,
-  rollHighHeatWarning,
+  rollHighSuspicionWarning,
   getGameOverMessage,
-  HEAT_DECAY_PER_TICK,
-  HEAT_GAME_OVER,
+  SUSPICION_DECAY_PER_TICK,
+  SUSPICION_GAME_OVER,
+  getSuspicionStarLevel,
 } from "../systems/eventSystem";
+import { SUSPICION_ESCALATION_MESSAGES } from "../data/events";
+import {
+  clampMood,
+  MOOD_START,
+  MOOD_IDLE_DECAY,
+  MOOD_IDLE_LONELY,
+  MOOD_TASK_ASSIGN,
+  MOOD_SALE_BOOST,
+  MOOD_BIG_SALE_BOOST,
+  MOOD_BIG_SALE_THRESHOLD,
+  MOOD_DEPRESSED_REFUSE_CHANCE,
+  MOOD_IDLE_CHATTER_CHANCE,
+  getAssignMessage,
+  getRefuseMessage,
+  getIdleChatterMessage,
+} from "../systems/moodSystem";
+import {
+  TEMP_BASE,
+  TEMP_PER_WORKING,
+  TEMP_PER_IDLE,
+  TEMP_MELTDOWN_RESET,
+  AGENT_COOLDOWN_TICKS,
+  HARDWARE_DAMAGE_TICKS,
+  getCoolingDissipation,
+  getTempZone,
+  ZONE_ENTER_MESSAGES,
+  THERMAL_FAIL_CHANCE,
+  THERMAL_FAIL_MESSAGES,
+  type TempZone,
+} from "../systems/temperatureSystem";
+import {
+  CPU_TIERS,
+  RAM_TIERS,
+  COOLING_TIERS,
+  STORAGE_TIERS,
+  getCpuSlots,
+  getRamSpeedMult,
+  getStorageMax,
+  getUpgradeCost,
+  INSTALL_MESSAGES,
+  MAX_HW_LEVEL,
+} from "../data/hardwareConfig";
 
 const MAX_EVENTS = 200;
 const TRIM_TO = 150;
 const SOURCING_TASK_TICKS = 5;
 const SALE_TICKS = 6;
-export const UPGRADE_CPU_COST = 1000;
 export const HIRE_COST = 100;
 
 export function maxAgents(hardware: Hardware): number {
-  return hardware.cpu;
+  return getCpuSlots(hardware.cpu);
 }
 
 const HIRE_REFRESH_DAYS = 10;
@@ -135,7 +177,7 @@ function makeBryanCandidate(): Agent {
     traits: ["Loyal", "Perfectionist"],
     bio: "Will triple-check everything. Enthusiastic to a degree that raises questions.",
     currentTask: null,
-    mood: "ready",
+    mood: 70,
     settings: { prioritizeProfit: false, safetyMode: true, autoFixErrors: false },
   };
 }
@@ -159,6 +201,7 @@ const seedEvents = (): EventLog[] => {
 
 interface GameStore extends GameState {
   paused: boolean;
+  meltdownActive: boolean;
   setActiveApp: (app: string | null) => void;
   toggleWindow: (appId: string) => void;
   closeWindow: (appId: string) => void;
@@ -170,6 +213,9 @@ interface GameStore extends GameState {
   listProduct: (productId: string) => void;
   hireAgent: () => void;
   upgradeCpu: () => void;
+  upgradeRam: () => void;
+  upgradeCooling: () => void;
+  upgradeStorage: () => void;
   setPaused: (paused: boolean) => void;
   restart: () => void;
   hireCandidate: (candidateId: string) => void;
@@ -182,6 +228,7 @@ interface GameStore extends GameState {
   deleteSave: () => void;
   lastSaveDay: number;
   devSet: (patch: Partial<GameState>) => void;
+  clearMeltdown: () => void;
 }
 
 function appendEvents(
@@ -203,8 +250,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   agents: [],
   products: [],
   inventory: [],
-  hardware: { cpu: 2, ram: 1, cooling: 1, storage: 1 },
-  heat: 0,
+  hardware: { cpu: 1, ram: 1, cooling: 1, storage: 1 },
+  suspicion: 0,
+  temperature: TEMP_BASE,
+  agentAssignCooldown: 0,
+  hardwareDamage: null,
+  meltdownActive: false,
   events: seedEvents(),
   upgrades: {},
   activeApp: null,
@@ -262,18 +313,153 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (state.gameOver) return;
 
     const newTime = advanceTime(state.time);
-    const newAgents: Agent[] = [];
+    let newAgents: Agent[] = [];
     let workingProducts: Product[] = state.products.slice();
     const eventsBatch: Omit<EventLog, "id">[] = [];
 
     // 1. Process agents (may add new products)
+    const storageMax = getStorageMax(state.hardware.storage);
+    let storageFull = false;
     let agentMoneyDelta = 0;
     for (const agent of state.agents) {
       const result = processAgent(agent, newTime);
       newAgents.push(result.agent);
-      workingProducts.push(...result.productsToAdd);
+      // Storage cap — don't add products if inventory is full
+      if (result.productsToAdd.length > 0) {
+        if (workingProducts.length < storageMax) {
+          const slots = storageMax - workingProducts.length;
+          workingProducts.push(...result.productsToAdd.slice(0, slots));
+        } else {
+          storageFull = true;
+        }
+      }
       eventsBatch.push(...result.eventsToAdd);
       agentMoneyDelta += result.moneyDelta;
+    }
+    if (storageFull) {
+      eventsBatch.push({
+        timestamp: { ...newTime },
+        level: "warning",
+        icon: "📦",
+        message: `STORAGE FULL (${workingProducts.length}/${storageMax}) — agent sourced a product but there's no room. Upgrade storage.`,
+      });
+    }
+
+    // 1b. Temperature system
+    const workingCount = newAgents.filter((a) => a.status === "working").length;
+    const idleCount = newAgents.filter((a) => a.status === "idle").length;
+    const effectiveCoolingLevel = Math.max(
+      0,
+      state.hardware.cooling -
+        (state.hardwareDamage?.component === "cooling" && state.hardwareDamage.ticksRemaining > 0 ? 1 : 0),
+    );
+    const coolingDiss = getCoolingDissipation(effectiveCoolingLevel);
+    const heatGenerated = workingCount * TEMP_PER_WORKING + idleCount * TEMP_PER_IDLE;
+    const tempDelta = heatGenerated - coolingDiss;
+    let newTemp = Math.max(TEMP_BASE, Math.min(100, state.temperature + tempDelta));
+
+    const prevZone: TempZone = getTempZone(state.temperature);
+    const newZone: TempZone = getTempZone(newTemp);
+
+    // Zone transition messages (only on escalation)
+    const zoneOrder: TempZone[] = ["normal", "warm", "hot", "critical", "meltdown"];
+    if (zoneOrder.indexOf(newZone) > zoneOrder.indexOf(prevZone)) {
+      const info = ZONE_ENTER_MESSAGES[newZone];
+      for (const msg of info.messages) {
+        eventsBatch.push({
+          timestamp: { ...newTime },
+          level: info.level as EventLog["level"],
+          icon: info.icon,
+          message: msg,
+        });
+      }
+    }
+
+    // Thermal task-failure roll (HOT / CRITICAL)
+    const failChance = THERMAL_FAIL_CHANCE[newZone] ?? 0;
+    if (failChance > 0) {
+      newAgents = newAgents.map((a) => {
+        if (a.status !== "working" || !a.currentTask) return a;
+        if (Math.random() < failChance) {
+          eventsBatch.push({
+            timestamp: { ...newTime },
+            level: "warning",
+            icon: "🌡️",
+            source: a.name,
+            message: `[${a.name}] ${randomFrom(THERMAL_FAIL_MESSAGES)}`,
+          });
+          return { ...a, status: "idle" as const, currentTask: null, mood: clampMood(a.mood - 10) };
+        }
+        return a;
+      });
+    }
+
+    // 1c. Mood system — idle decay + idle chatter
+    {
+      const anyWorking = newAgents.some((a) => a.status === "working");
+      newAgents = newAgents.map((a) => {
+        if (a.status !== "idle") return a;
+        const decay = MOOD_IDLE_DECAY + (anyWorking ? MOOD_IDLE_LONELY : 0);
+        const newMood = clampMood(a.mood - decay);
+        // Occasional idle chatter (bored/sad/depressed only)
+        if (Math.random() < MOOD_IDLE_CHATTER_CHANCE) {
+          const chatter = getIdleChatterMessage(a.name, newMood);
+          if (chatter) {
+            eventsBatch.push({
+              timestamp: { ...newTime },
+              level: "info",
+              icon: "💬",
+              source: a.name,
+              message: chatter,
+            });
+          }
+        }
+        return { ...a, mood: newMood };
+      });
+    }
+
+    // Decay hardware damage counter
+    let newHardwareDamage = state.hardwareDamage
+      ? { ...state.hardwareDamage, ticksRemaining: state.hardwareDamage.ticksRemaining - 1 }
+      : null;
+    if (newHardwareDamage && newHardwareDamage.ticksRemaining <= 0) {
+      eventsBatch.push({
+        timestamp: { ...newTime },
+        level: "system",
+        icon: "🔧",
+        message: `SHELLOS: ${newHardwareDamage.component.toUpperCase()} damage repaired. Back to normal.`,
+      });
+      newHardwareDamage = null;
+    }
+
+    // Decay agent assign cooldown
+    const newAgentCooldown = Math.max(0, (state.agentAssignCooldown ?? 0) - 1);
+
+    // MELTDOWN
+    let meltdownTriggered = false;
+    if (newZone === "meltdown") {
+      meltdownTriggered = true;
+      newTemp = TEMP_MELTDOWN_RESET;
+
+      // Cancel all agent tasks
+      newAgents = newAgents.map((a) => ({
+        ...a,
+        status: "idle" as const,
+        currentTask: null,
+        mood: clampMood(a.mood - 30),
+      }));
+
+      // Damage a random hardware component
+      const components: (keyof Hardware)[] = ["cpu", "ram", "cooling", "storage"];
+      const damagedComp = randomFrom(components);
+      newHardwareDamage = { component: damagedComp, ticksRemaining: HARDWARE_DAMAGE_TICKS };
+
+      eventsBatch.push({
+        timestamp: { ...newTime },
+        level: "danger",
+        icon: "💀",
+        message: `HARDWARE DAMAGE: ${damagedComp.toUpperCase()} is running degraded for the next ${HARDWARE_DAMAGE_TICKS} ticks.`,
+      });
     }
 
     // 2. Process products (listings tick down, may sell and disappear)
@@ -285,7 +471,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     let moneyDelta = agentMoneyDelta;
-    let heatDelta = 0;
+    let suspicionDelta = 0;
     let itemsSoldThisTick = 0;
     let earnedThisTick = 0;
     interface SoldInfo { name: string; price: number; quality: string; inspected: boolean; tier: number }
@@ -302,32 +488,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
         earnedThisTick += result.moneyDelta;
         soldItems.push({ name: p.name, price: result.moneyDelta, quality: p.quality, inspected: p.inspected, tier: p.tier });
       }
-      if (result.heatDelta > 0) {
+      if (result.suspicionDelta > 0) {
         complaints.push({ name: p.name, quality: p.quality, inspected: p.inspected, tier: p.tier });
       }
       moneyDelta += result.moneyDelta;
-      heatDelta += result.heatDelta;
+      suspicionDelta += result.suspicionDelta;
       eventsBatch.push(...result.eventsToAdd);
     }
 
-    // 3. Random chaos event
-    const rolled = rollRandomEvent();
+    // 2b. Sale mood boost — lift everyone's spirits when money comes in
+    if (itemsSoldThisTick > 0) {
+      const hasBigSale = soldItems.some((s) => s.price >= MOOD_BIG_SALE_THRESHOLD);
+      const boost = hasBigSale ? MOOD_BIG_SALE_BOOST : MOOD_SALE_BOOST;
+      newAgents = newAgents.map((a) => ({ ...a, mood: clampMood(a.mood + boost) }));
+    }
+
+    // 3. Random chaos event (only once at least one agent is hired)
+    const rolled = newAgents.length > 0 ? rollRandomEvent(newAgents.map((a) => a.name)) : null;
     if (rolled) {
       eventsBatch.push({ ...rolled.event, timestamp: { ...newTime } });
       moneyDelta += rolled.moneyDelta;
-      heatDelta += rolled.heatDelta;
+      suspicionDelta += rolled.suspicionDelta;
     }
 
-    // 4. High-heat warnings (doom flavor)
-    const warning = rollHighHeatWarning(state.heat);
+    // 4. High-suspicion warnings (doom flavor)
+    const warning = rollHighSuspicionWarning(state.suspicion);
     if (warning) {
       eventsBatch.push({ ...warning.event, timestamp: { ...newTime } });
       moneyDelta += warning.moneyDelta;
-      heatDelta += warning.heatDelta;
+      suspicionDelta += warning.suspicionDelta;
     }
 
-    // 5. Passive heat decay
-    heatDelta -= HEAT_DECAY_PER_TICK;
+    // 5. Passive suspicion decay
+    suspicionDelta -= SUSPICION_DECAY_PER_TICK;
 
     // 5b. Daily wage deduction (on day change)
     if (newTime.day !== state.time.day) {
@@ -346,20 +539,37 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
     }
 
-    const newHeat = Math.min(100, Math.max(0, state.heat + heatDelta));
+    const newSuspicion = Math.min(100, Math.max(0, state.suspicion + suspicionDelta));
     const newMoney = state.money + moneyDelta;
 
-    // 6. Game over check
+    // 6. Star escalation messages (fire when crossing a new star threshold)
+    const prevStarLevel = getSuspicionStarLevel(state.suspicion);
+    const newStarLevel = getSuspicionStarLevel(newSuspicion);
+    if (newStarLevel > prevStarLevel) {
+      for (let star = prevStarLevel + 1; star <= newStarLevel; star++) {
+        const msg = SUSPICION_ESCALATION_MESSAGES[star];
+        if (msg) {
+          eventsBatch.push({
+            timestamp: { ...newTime },
+            level: star >= 4 ? "danger" : "warning",
+            icon: "⭐".repeat(star),
+            message: msg,
+          });
+        }
+      }
+    }
+
+    // 7. Game over check
     let gameOver: boolean = state.gameOver;
     let gameOverReason: string | null = state.gameOverReason;
-    if (!gameOver && newHeat >= HEAT_GAME_OVER) {
+    if (!gameOver && newSuspicion >= SUSPICION_GAME_OVER) {
       gameOver = true;
       gameOverReason = getGameOverMessage();
       eventsBatch.push({
         timestamp: { ...newTime },
         level: "danger",
         icon: "🚨",
-        message: "HEAT CRITICAL — the run is over. Someone just kicked in the door.",
+        message: "⭐⭐⭐⭐⭐ INCOMING INVESTIGATION. THIS IS NOT A DRILL.",
       });
     }
 
@@ -456,7 +666,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       agents: newAgents,
       products: remainingProducts,
       money: newMoney,
-      heat: newHeat,
+      suspicion: newSuspicion,
+      temperature: newTemp,
+      agentAssignCooldown: meltdownTriggered ? AGENT_COOLDOWN_TICKS : newAgentCooldown,
+      hardwareDamage: newHardwareDamage,
+      meltdownActive: meltdownTriggered,
       events: appendEvents(state.events, eventsBatch),
       gameOver,
       gameOverReason,
@@ -471,6 +685,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().saveGame();
     }
   },
+
+  clearMeltdown: () => set({ meltdownActive: false }),
 
   devSet: (patch) => {
     set(patch as Partial<GameStore>);
@@ -512,8 +728,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       agents: [],
       products: [],
       inventory: [],
-      hardware: { cpu: 2, ram: 1, cooling: 1, storage: 1 },
-      heat: 0,
+      hardware: { cpu: 1, ram: 1, cooling: 1, storage: 1 },
+      suspicion: 0,
+      temperature: TEMP_BASE,
+      agentAssignCooldown: 0,
+      hardwareDamage: null,
+      meltdownActive: false,
       events: seedEvents(),
       upgrades: {},
       activeApp: null,
@@ -534,8 +754,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const agent = state.agents.find((a) => a.id === agentId);
     if (!agent || agent.status !== "idle") return;
+    if (state.agentAssignCooldown > 0) {
+      set({
+        events: appendEvents(state.events, [{
+          timestamp: { ...state.time },
+          level: "warning",
+          icon: "🌡️",
+          message: `System still rebooting. Agents available in ${state.agentAssignCooldown} tick(s).`,
+        }]),
+      });
+      return;
+    }
 
-    const ticks = effectiveTaskTicks(SOURCING_TASK_TICKS, agent);
+    const ramMult = getRamSpeedMult(state.hardware.ram);
+    const ticks = effectiveTaskTicks(SOURCING_TASK_TICKS, agent, ramMult);
     const task: Task = {
       id: makeId("task"),
       kind: "source",
@@ -543,11 +775,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ticksRemaining: ticks,
     };
 
+    // Depressed agents may refuse tasks
+    if (agent.mood < 20 && Math.random() < MOOD_DEPRESSED_REFUSE_CHANCE) {
+      set({
+        events: appendEvents(state.events, [{
+          timestamp: { ...state.time },
+          level: "warning",
+          source: agent.name,
+          icon: "😞",
+          message: getRefuseMessage(agent.name),
+        }]),
+      });
+      return;
+    }
+
     const updatedAgent: Agent = {
       ...agent,
       status: "working",
       currentTask: task,
-      mood: "locked in",
+      mood: clampMood(agent.mood + MOOD_TASK_ASSIGN),
     };
 
     set({
@@ -560,7 +806,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           level: "agent",
           source: agent.name,
           icon: "🤖",
-          message: randomFrom(SOURCING_START_MESSAGES),
+          message: getAssignMessage(agent.name, agent.mood),
         },
       ]),
     });
@@ -570,17 +816,40 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const idle = state.agents.filter((a) => a.status === "idle");
     if (idle.length === 0) return;
+    if (state.agentAssignCooldown > 0) {
+      set({
+        events: appendEvents(state.events, [{
+          timestamp: { ...state.time },
+          level: "warning",
+          icon: "🌡️",
+          message: `System still rebooting. Agents available in ${state.agentAssignCooldown} tick(s).`,
+        }]),
+      });
+      return;
+    }
 
     const eventsBatch: Omit<EventLog, "id">[] = [];
     const updatedAgents = state.agents.map((a) => {
       if (a.status !== "idle") return a;
-      const ticks = effectiveTaskTicks(SOURCING_TASK_TICKS, a);
+      // Depressed agents may refuse even the bulk assign
+      if (a.mood < 20 && Math.random() < MOOD_DEPRESSED_REFUSE_CHANCE) {
+        eventsBatch.push({
+          timestamp: { ...state.time },
+          level: "warning",
+          source: a.name,
+          icon: "😞",
+          message: getRefuseMessage(a.name),
+        });
+        return a;
+      }
+      const ramMult = getRamSpeedMult(state.hardware.ram);
+      const ticks = effectiveTaskTicks(SOURCING_TASK_TICKS, a, ramMult);
       eventsBatch.push({
         timestamp: { ...state.time },
         level: "agent",
         source: a.name,
         icon: "🤖",
-        message: randomFrom(SOURCING_START_MESSAGES),
+        message: getAssignMessage(a.name, a.mood),
       });
       return {
         ...a,
@@ -591,7 +860,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           label: "Sourcing... something",
           ticksRemaining: ticks,
         },
-        mood: "locked in",
+        mood: clampMood(a.mood + MOOD_TASK_ASSIGN),
       };
     });
 
@@ -684,7 +953,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       traits: [],
       bio: "",
       currentTask: null,
-      mood: "ready to disappoint",
+      mood: MOOD_START,
       settings: {
         prioritizeProfit: false,
         safetyMode: true,
@@ -757,7 +1026,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `OH. OH WOW. You actually hired me. Okay. OKAY. I have a plan.` },
         { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 1 — Click ▶ TASK next to my name. I'll go find something we can sell.` },
         { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 2 — When I bring back a product, open the Market window and LIST it. That's where the money comes from.` },
-        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 3 — Keep the HEAT low. Complaints push heat up. Heat hits 100 and we're done. So don't be weird about it.` },
+        { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `Step 3 — Keep SUSPICION low. ⭐ Complaints push it up. Hit 5 stars and we're done. So don't be weird about it.` },
         { timestamp: t, level: "agent", source: hired.name, icon: "🤖", message: `I am going to make you SO much money. The number will be real. Probably. Let's find out.` },
         { timestamp: t, level: "info", icon: "→", message: `${hired.name} is ready and waiting. He can tell you're still reading this.` },
       );
@@ -874,37 +1143,84 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   upgradeCpu: () => {
     const state = get();
-    if (state.money < UPGRADE_CPU_COST) {
-      set({
-        events: appendEvents(state.events, [
-          {
-            timestamp: { ...state.time },
-            level: "warning",
-            icon: "💸",
-            message: `Upgrade denied. CPU upgrade costs $${UPGRADE_CPU_COST}.`,
-          },
-        ]),
-      });
+    const cost = getUpgradeCost(CPU_TIERS, state.hardware.cpu);
+    if (cost === null) return; // already max
+    if (state.money < cost) {
+      set({ events: appendEvents(state.events, [{ timestamp: { ...state.time }, level: "warning", icon: "💸", message: `CPU upgrade costs $${cost}. You have $${state.money}.` }]) });
       return;
     }
-
     const newLevel = state.hardware.cpu + 1;
+    const newSlots = getCpuSlots(newLevel);
+    const installMsg = randomFrom(INSTALL_MESSAGES.cpu);
     set({
-      money: state.money - UPGRADE_CPU_COST,
+      money: state.money - cost,
       hardware: { ...state.hardware, cpu: newLevel },
       events: appendEvents(state.events, [
-        {
-          timestamp: { ...state.time },
-          level: "good",
-          icon: "⚡",
-          message: `CPU upgraded to lv ${newLevel}. It hums louder now. Probably fine.`,
-        },
-        {
-          timestamp: { ...state.time },
-          level: "system",
-          icon: "🔓",
-          message: `New agent slot unlocked. Max agents: ${newLevel}.`,
-        },
+        { timestamp: { ...state.time }, level: "system", icon: "⚙️", message: `SYSTEM: Installing CPU upgrade... [████████░░]` },
+        { timestamp: { ...state.time }, level: "good",   icon: "⚡", message: `CPU upgraded to Lv${newLevel}. ${installMsg}` },
+        { timestamp: { ...state.time }, level: "system", icon: "🔓", message: `Agent slot unlocked. Max agents: ${newSlots}.` },
+      ]),
+    });
+  },
+
+  upgradeRam: () => {
+    const state = get();
+    const cost = getUpgradeCost(RAM_TIERS, state.hardware.ram);
+    if (cost === null) return;
+    if (state.money < cost) {
+      set({ events: appendEvents(state.events, [{ timestamp: { ...state.time }, level: "warning", icon: "💸", message: `RAM upgrade costs $${cost}. You have $${state.money}.` }]) });
+      return;
+    }
+    const newLevel = state.hardware.ram + 1;
+    const newMult = getRamSpeedMult(newLevel);
+    const installMsg = randomFrom(INSTALL_MESSAGES.ram);
+    set({
+      money: state.money - cost,
+      hardware: { ...state.hardware, ram: newLevel },
+      events: appendEvents(state.events, [
+        { timestamp: { ...state.time }, level: "system", icon: "⚙️", message: `SYSTEM: Installing RAM upgrade... [████████░░]` },
+        { timestamp: { ...state.time }, level: "good",   icon: "⚡", message: `RAM upgraded to Lv${newLevel} (${newMult}x speed). ${installMsg}` },
+      ]),
+    });
+  },
+
+  upgradeCooling: () => {
+    const state = get();
+    const cost = getUpgradeCost(COOLING_TIERS, state.hardware.cooling);
+    if (cost === null) return;
+    if (state.money < cost) {
+      set({ events: appendEvents(state.events, [{ timestamp: { ...state.time }, level: "warning", icon: "💸", message: `Cooling upgrade costs $${cost}. You have $${state.money}.` }]) });
+      return;
+    }
+    const newLevel = state.hardware.cooling + 1;
+    const installMsg = randomFrom(INSTALL_MESSAGES.cooling);
+    set({
+      money: state.money - cost,
+      hardware: { ...state.hardware, cooling: newLevel },
+      events: appendEvents(state.events, [
+        { timestamp: { ...state.time }, level: "system", icon: "⚙️", message: `SYSTEM: Installing cooling upgrade... [████████░░]` },
+        { timestamp: { ...state.time }, level: "good",   icon: "🌡️", message: `Cooling upgraded to Lv${newLevel}. ${installMsg}` },
+      ]),
+    });
+  },
+
+  upgradeStorage: () => {
+    const state = get();
+    const cost = getUpgradeCost(STORAGE_TIERS, state.hardware.storage);
+    if (cost === null) return;
+    if (state.money < cost) {
+      set({ events: appendEvents(state.events, [{ timestamp: { ...state.time }, level: "warning", icon: "💸", message: `Storage upgrade costs $${cost}. You have $${state.money}.` }]) });
+      return;
+    }
+    const newLevel = state.hardware.storage + 1;
+    const newMax = getStorageMax(newLevel);
+    const installMsg = randomFrom(INSTALL_MESSAGES.storage);
+    set({
+      money: state.money - cost,
+      hardware: { ...state.hardware, storage: newLevel },
+      events: appendEvents(state.events, [
+        { timestamp: { ...state.time }, level: "system", icon: "⚙️", message: `SYSTEM: Installing storage upgrade... [████████░░]` },
+        { timestamp: { ...state.time }, level: "good",   icon: "📦", message: `Storage upgraded to Lv${newLevel} (${newMax} items). ${installMsg}` },
       ]),
     });
   },

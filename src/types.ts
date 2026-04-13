@@ -26,7 +26,7 @@ export interface Agent {
   traits: string[];
   bio: string;
   currentTask: Task | null;
-  mood: string;
+  mood: number;
   settings: AgentSettings;
 }
 
@@ -108,6 +108,11 @@ export interface GameStats {
   daysSurvived: number;
 }
 
+export interface HardwareDamage {
+  component: keyof Hardware;
+  ticksRemaining: number;
+}
+
 export interface GameState {
   money: number;
   time: GameTime;
@@ -115,7 +120,10 @@ export interface GameState {
   products: Product[];
   inventory: InventoryItem[];
   hardware: Hardware;
-  heat: number;
+  suspicion: number;
+  temperature: number;
+  agentAssignCooldown: number;
+  hardwareDamage: HardwareDamage | null;
   events: EventLog[];
   upgrades: Record<string, boolean>;
   activeApp: string | null;

@@ -18,7 +18,7 @@ export function GameOverScreen() {
             SYSTEM HALTED
           </div>
           <div className="text-shell-dim text-xs mb-4">
-            // cause of death: too much heat
+            // cause of death: too much suspicion
           </div>
 
           <div className="shell-panel-inset p-3 mb-4 text-shell-text text-sm leading-relaxed">

@@ -60,9 +60,13 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
-        "heat-pulse": {
+        "suspicion-pulse": {
           "0%, 100%": { textShadow: "none" },
           "50%": { textShadow: "0 0 8px #ff3860" },
+        },
+        "meltdown-flash": {
+          "0%, 100%": { color: "#ff3860", textShadow: "0 0 12px #ff3860" },
+          "50%": { color: "#ff8c42", textShadow: "0 0 12px #ff8c42" },
         },
         shake: {
           "0%, 100%": { transform: "translateX(0)" },
@@ -79,7 +83,8 @@ export default {
         "flash-green": "flash-green 0.6s ease-out",
         "flash-red": "flash-red 0.5s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
-        "heat-pulse": "heat-pulse 1s ease-in-out infinite",
+        "suspicion-pulse": "suspicion-pulse 1s ease-in-out infinite",
+        "meltdown-flash": "meltdown-flash 0.4s ease-in-out infinite",
         shake: "shake 0.3s ease-in-out",
       },
     },

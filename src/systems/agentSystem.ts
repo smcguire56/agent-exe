@@ -15,6 +15,7 @@ import {
   rollTraitFlavor,
   rollKleptoSteal,
 } from "./traitEffects";
+import { clampMood, MOOD_TASK_SUCCESS, MOOD_TASK_FAIL, getCompleteMessage } from "./moodSystem";
 
 // Probability per in-progress tick that we emit a flavor chatter line
 const FLAVOR_CHANCE = 0.35;
@@ -115,7 +116,7 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
         level: "good",
         source: agent.name,
         icon: "📦",
-        message: `Sourced "${product.name}" for $${product.buyPrice}. ${randomFrom(successPool)}`,
+        message: `Sourced "${product.name}" for $${product.buyPrice}. ${randomFrom(successPool)} ${getCompleteMessage(agent.name, agent.mood)}`,
       }),
     );
 
@@ -150,8 +151,8 @@ export function processAgent(agent: Agent, time: GameTime): AgentTickResult {
     status: "idle",
     currentTask: null,
     mood: success
-      ? (agent.tier >= 2 ? "superior" : "smug")
-      : (agent.tier >= 2 ? "recalibrating" : "having a day"),
+      ? clampMood(agent.mood + MOOD_TASK_SUCCESS)
+      : clampMood(agent.mood - MOOD_TASK_FAIL),
   };
   return result;
 }

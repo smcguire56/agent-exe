@@ -1,5 +1,6 @@
 import { useGameStore, maxAgents, HIRE_COST } from "../store/gameStore";
 import type { Agent } from "../types";
+import { getMoodEmoji, getMoodLabel } from "../systems/moodSystem";
 
 const statusColor: Record<Agent["status"], string> = {
   idle: "text-shell-dim",
@@ -35,6 +36,9 @@ function AgentRow({ agent }: { agent: Agent }) {
             {statusDot[agent.status]}
           </div>
           <div className="uppercase">{agent.status}</div>
+          <div className="text-base leading-none" title={getMoodLabel(agent.mood)}>
+            {getMoodEmoji(agent.mood)}
+          </div>
         </div>
       </div>
       {agent.currentTask && (
@@ -45,7 +49,9 @@ function AgentRow({ agent }: { agent: Agent }) {
           </span>
         </div>
       )}
-      <div className="mt-1 text-shell-dim italic">"{agent.mood}"</div>
+      <div className="mt-1 text-shell-dim text-[10px]">
+        {getMoodEmoji(agent.mood)} {getMoodLabel(agent.mood)} ({agent.mood})
+      </div>
       {agent.status === "idle" && (
         <button
           onClick={() => assignTask(agent.id)}

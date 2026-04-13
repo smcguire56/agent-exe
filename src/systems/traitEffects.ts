@@ -1,6 +1,7 @@
 import type { Agent, EventLog, GameTime } from "../types";
 import type { PersonalityTrait } from "../data/traits";
 import { randomFrom } from "./gameTick";
+import { getMoodSpeedMult, getMoodAccuracyMult } from "./moodSystem";
 
 // ── Stat modifiers ──────────────────────────────────────────────
 
@@ -43,18 +44,18 @@ export function getModifiers(agent: Agent): TraitModifiers {
   return result;
 }
 
-/** Apply speed modifier to a base tick count (lower = faster). */
-export function effectiveTaskTicks(baseTicks: number, agent: Agent): number {
+/** Apply speed modifier (traits + mood + RAM) to a base tick count (lower = faster). */
+export function effectiveTaskTicks(baseTicks: number, agent: Agent, ramMult: number = 1.0): number {
   const { speedMult } = getModifiers(agent);
-  // speedMult > 1 = faster = fewer ticks, speedMult < 1 = slower = more ticks
-  // We invert: more speed → fewer ticks
-  return Math.max(1, Math.round(baseTicks / speedMult));
+  const moodMult = getMoodSpeedMult(agent.mood);
+  return Math.max(1, Math.round(baseTicks / (speedMult * moodMult * ramMult)));
 }
 
-/** Apply accuracy modifier. */
+/** Apply accuracy modifier (traits + mood). */
 export function effectiveAccuracy(agent: Agent): number {
   const { accuracyMult } = getModifiers(agent);
-  return Math.min(1.0, agent.accuracy * accuracyMult);
+  const moodAccMult = getMoodAccuracyMult(agent.mood);
+  return Math.min(1.0, agent.accuracy * accuracyMult * moodAccMult);
 }
 
 // ── Per-tick trait flavor events ─────────────────────────────────

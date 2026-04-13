@@ -42,7 +42,7 @@ export function useSoundEffects(): void {
             playAlert();
           } else if (e.level === "good" && (msg.includes("sourced") || msg.includes("hired"))) {
             playClick();
-          } else if (e.level === "warning" && msg.includes("heat")) {
+          } else if (e.level === "warning" && (msg.includes("suspicion") || msg.includes("attention") || msg.includes("asking questions"))) {
             playAlert();
           }
         }
