@@ -9,9 +9,6 @@ import type {
   Product,
   Task,
 } from "../types";
-import {
-  SOURCING_START_MESSAGES,
-} from "../data/messages";
 import { TIER_1_NAMES, TIER_2_NAMES } from "../data/agentNames";
 import { pickTraits, generateBio, randomMood } from "../data/traits";
 import { advanceTime, randomFrom, makeId } from "../systems/gameTick";
@@ -68,7 +65,6 @@ import {
   getStorageMax,
   getUpgradeCost,
   INSTALL_MESSAGES,
-  MAX_HW_LEVEL,
 } from "../data/hardwareConfig";
 
 const MAX_EVENTS = 200;

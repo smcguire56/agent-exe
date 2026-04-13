@@ -137,7 +137,7 @@ const COMPLETE_MESSAGES: Record<MoodLevel, string[]> = {
   ],
 };
 
-export function getCompleteMessage(name: string, mood: number): string {
+export function getCompleteMessage(_name: string, mood: number): string {
   const level = getMoodLevel(mood);
   const pool = COMPLETE_MESSAGES[level];
   return pool[Math.floor(Math.random() * pool.length)];

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopBar } from "./components/TopBar";
 import { AgentPanel } from "./components/AgentPanel";
 import { EventLog } from "./components/EventLog";
